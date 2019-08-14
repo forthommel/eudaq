@@ -1,0 +1,150 @@
+message "Executing SampicDAQ_init.uic"
+
+SF2 firmware_version ret
+
+message "Selecting I2C fast mode (400 KHz)"
+quickusb wsetting i2ctl 1 ret
+
+
+SF2 set_samp_trg Disabled ret
+
+message "Clear LPBUS RX fifo"
+SF2 send_cmd 80  ret   ! SAMPIC POR
+wait 1
+SF2 send_cmd 30  ret   ! reset LPBUS command rx fifo & SF2 register
+wait 1
+SF2  set_fast_cmd_source software ret
+SF2 send_cmd 2  ret    ! software resynch
+wait 1
+
+!sf2 set_lp 180 ret
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!        SF2 init               !!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+SF2  set_op_mode configuration ret
+SF2  set_samp_trg_source Disabled ret
+SF2  set_aL1A_Freq 100_HZ ret
+Sf2  Set_DAQ_mode qusb_direct ret
+Sf2  Set_L1A_Latency 4 ret
+Sf2  Set_nb_of_samples 64
+
+SF2  read_conf ret
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!       fea init                !!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+FEA reset_fea 1 ret
+
+FEA set_control_reg 		1 82 ret
+FEA set_pulser_reg 			1 0 ret
+FEA set_samples_to_read 	1 64 ret
+FEA set_convert_delay  		1 0 ret
+FEA set_convert_length 		1 188 ret ! 188/(2^(11-nbit))
+FEA set_ext_trg_gate_L 		1 5 ret 
+FEA set_frames_x_block		1 1 ret
+FEA set_trg_x_event			1 128 ret
+
+FEA read_status 0 ret
+
+FEA reset_fea 0 ret
+
+FEA set_control_reg 		0 82 ret
+FEA set_pulser_reg 			0 0 ret
+FEA set_samples_to_read 	0 64 ret
+FEA set_convert_delay  		0 0 ret
+FEA set_convert_length 		0 188 ret ! 188/(2^(11-nbit))
+FEA set_ext_trg_gate_L 		0 5 ret 
+FEA set_frames_x_block		0 1 ret
+FEA set_trg_x_event			0 128 ret
+
+FEA read_status 1 ret
+
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!            DAC init           !!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+DAC Set_Rosc 		1	1.1	ret
+DAC Set_StartRamp	1	0.0 ret
+DAC Set_ExtThr		1	0.0 ret
+DAC Set_DLL			1	0.8 ret
+
+
+DAC Set_Baseline	1	0.5  	ret  !! 
+DAC Set_Ramp		1	0.035  	ret !! 11 bit
+DAC Set_Dacp		1	1.8 	ret	
+DAC Set_Dacm		1	0.0 	ret
+
+
+DAC Set_Rosc 		0	1.1	ret
+DAC Set_StartRamp	0	0.0 ret
+DAC Set_ExtThr		0	0.0 ret
+DAC Set_DLL			0	0.8 ret
+
+
+DAC Set_Baseline	0	0.5  	ret  !! 
+DAC Set_Ramp		0	0.035  	ret !! 11 bit
+DAC Set_Dacp		0	1.8 	ret	
+DAC Set_Dacm		0	0.0 	ret
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!         SAMPIC init           !!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+sampic rst_interface 1 ret
+
+sampic conf1 trg_res_source 1 EOC ret ret
+sampic conf1 disable_del_dll 1 FALSE ret ret
+sampic conf1 disable_del_clk 1 TRUE ret ret
+sampic conf1 dll_fast_mode 1 TRUE ret ret
+sampic conf1 write 1 ret ret
+
+sampic dll_reg set_vdac 1 1.0 ret ret
+sampic dll_reg write 1 ret ret
+
+sampic ch_reg Set_rel_threshold 1 all 0.25 ret ret
+sampic ch_reg discr_ext_source  1 all FALSE ret ret
+sampic ch_reg trg_source  1 all EXT ret ret
+sampic ch_reg trg_ena     1 all true ret ret
+sampic ch_reg write 1 all ret ret
+
+sampic rst_interface 0 ret
+
+sampic conf1 trg_res_source 0 EOC ret ret
+sampic conf1 disable_del_dll 0 FALSE ret ret
+sampic conf1 disable_del_clk 0 TRUE ret ret
+sampic conf1 dll_fast_mode 0 TRUE ret ret
+sampic conf1 write 0 ret ret
+
+sampic dll_reg set_vdac 0 1.0 ret ret
+sampic dll_reg write 0 ret ret
+
+sampic ch_reg Set_rel_threshold 0 all 0.25 ret ret
+sampic ch_reg discr_ext_source  0 all FALSE ret ret
+sampic ch_reg trg_source  0 all EXT ret ret
+sampic ch_reg trg_ena     0 all true ret ret
+sampic ch_reg write 0 all ret ret
+
+!!!!!!!!!!!!!!!!sf2!!!!!!!!!!!!!!!!!!!!
+!!!         DAQ init              !!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+Acquisition  nb_of_samples 1 64 ret
+Acquisition  nb_of_bit 1 11 ret
+
+Acquisition  nb_of_samples 0 64 ret
+Acquisition  nb_of_bit 0 11 ret
+
+acquisition  runtag  test ret
+acquisition  datapath ./ ret
+
+!@run
+
+

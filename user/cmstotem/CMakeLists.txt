@@ -10,4 +10,4 @@ endif()
 
 message(STATUS "user/cmstotem is to be built (USER_CMSTOTEM_BUILD=ON)")
 
-#add_subdirectory(module)
+add_subdirectory(module)
