@@ -36,10 +36,10 @@ public:
 private:
   static const size_t m_buffer_size = 32000;
 
-  bool m_flag_ts;
-  FILE* m_file_lock;
+  bool m_flag_ts = false;
+  FILE* m_file_lock = 0;
   std::chrono::milliseconds m_ms_busy;
-  bool m_exit_of_run;
+  bool m_exit_of_run = false;
   std::array<uint8_t,m_buffer_size> m_buffer;
 };
 
@@ -49,7 +49,7 @@ namespace{
 }
 
 SampicProducer::SampicProducer(const std::string & name, const std::string & runcontrol)
-  :eudaq::Producer(name, runcontrol), m_file_lock(0), m_exit_of_run(false){
+  :eudaq::Producer(name, runcontrol){
 }
 
 void SampicProducer::DoInitialise(){
@@ -168,23 +168,25 @@ void SampicProducer::RunLoop(){
     }
 
     for (uint32_t feIndex=0; feIndex < 2; ++feIndex) {
-      int nByte=0;
+      int num_bytes=0;
       if (SF2_RW_REG.DAQ_mode==1)
-        nByte = acq_get_stream(feIndex, m_buffer.data());
+        num_bytes = acq_get_stream(feIndex, m_buffer.data());
       else
-        nByte = acq_get_built_stream(feIndex, m_buffer.data(), 0);
-      if (nByte < 0)
-        EUDAQ_THROW("Acquisition failed with code "+std::to_string(nByte));
-      if (nByte > m_buffer_size)
-        EUDAQ_ERROR("Buffer overflown! ("+std::to_string(nByte)+" > max_bytes="
+        num_bytes = acq_get_built_stream(feIndex, m_buffer.data(), 0);
+      if (num_bytes < 0)
+        EUDAQ_THROW("Acquisition failed with code "+std::to_string(num_bytes));
+      if (num_bytes > m_buffer_size)
+        EUDAQ_ERROR("Buffer overflown! ("+std::to_string(num_bytes)+" > max_bytes="
                    +std::to_string(m_buffer_size)+")");
-      if (nByte > 0) {
-        EUDAQ_INFO("got "+std::to_string(nByte)+" byte(s)");
-        ev->AddBlock(feIndex, std::vector<uint8_t>(m_buffer.begin(), m_buffer.begin()+nByte));
+      if (num_bytes > 0) {
+        EUDAQ_INFO("got "+std::to_string(num_bytes)+" byte(s)");
+        //--- reinterpret output as 16-bit words
+        uint16_t* ptr = reinterpret_cast<uint16_t*>(m_buffer.data());
+        ev->AddBlock(feIndex, std::vector<uint16_t>(ptr, ptr+num_bytes/2));
       }
     }
-    uint32_t trigger_n = 0; //FIXME
-    ev->SetTriggerN(trigger_n); //FIXME when to issue trigger
+    //uint32_t trigger_n = 0; //FIXME
+    //ev->SetTriggerN(trigger_n); //FIXME when to issue trigger
 
     SendEvent(std::move(ev));
   }
