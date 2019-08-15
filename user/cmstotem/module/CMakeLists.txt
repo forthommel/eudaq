@@ -9,17 +9,27 @@ add_library(${EUDAQ_MODULE} SHARED ${MODULE_SRC})
 target_link_libraries(${EUDAQ_MODULE} ${EUDAQ_CORE_LIBRARY} ${EUDAQ_TTREE_LIBRARY})
 
 # specific linking for the Sampic manipulation
-find_library(SAMPIC_DAQ_LIB SampicDAQ HINTS $ENV{SAMPIC_DAQ})
-if(NOT SAMPIC_DAQ_LIB)
-  message(FATAL_ERROR "Failed to retrieve the Sampic DAQ library!")
+find_library(SAMPICDAQ_LIB SampicDAQ HINTS ENV SAMPICDAQ_DIR)
+if(NOT SAMPICDAQ_LIB)
+  message(FATAL_ERROR "Failed to find the Sampic DAQ library!")
 endif()
-target_link_libraries(${EUDAQ_MODULE} ${SAMPIC_DAQ_LIB})
-find_path(SAMPIC_DAQ_PATH sampicdaq HINTS $ENV{SAMPIC_DAQ} PATH_SUFFIXES include)
-find_path(SAMPIC_DAQ_EXT_PATH BBmenu HINTS $ENV{SAMPIC_DAQ} PATH_SUFFIXES external)
-if(NOT SAMPIC_DAQ_PATH OR NOT SAMPIC_DAQ_EXT_PATH)
-  message(FATAL_ERROR "Failed to retrieve the Sampic DAQ library headers!")
+message(STATUS "Sampic DAQ library found in ${SAMPICDAQ_LIB}")
+target_link_libraries(${EUDAQ_MODULE} ${SAMPICDAQ_LIB})
+
+find_path(SAMPICDAQ_PATH sampicdaq HINTS $ENV{SAMPICDAQ_DIR} PATH_SUFFIXES include)
+find_path(SAMPICDAQ_EXT_PATH BBmenu HINTS $ENV{SAMPICDAQ_DIR} PATH_SUFFIXES external)
+if(NOT SAMPICDAQ_PATH OR NOT SAMPICDAQ_EXT_PATH)
+  message(FATAL_ERROR "Failed to find the Sampic DAQ library headers!")
 endif()
-target_include_directories(${EUDAQ_MODULE} PRIVATE ${SAMPIC_DAQ_PATH} ${SAMPIC_DAQ_EXT_PATH})
+target_include_directories(${EUDAQ_MODULE} PRIVATE ${SAMPICDAQ_PATH} ${SAMPICDAQ_EXT_PATH})
+
+# QuickUSB library linking
+find_library(QUICKUSB_LIB quickusb HINTS ENV QUICKUSB_LIB)
+if(NOT QUICKUSB_LIB)
+  message(FATAL_ERROR "Failed to find the QuickUSB library!")
+endif()
+message(STATUS "QuickUSB library found in ${QUICKUSB_LIB}")
+target_link_libraries(${EUDAQ_MODULE} ${QUICKUSB_LIB})
 
 install(TARGETS
   ${EUDAQ_MODULE}

@@ -11,6 +11,7 @@ verb	"Sampic_config" "Sampic config menu"
 verb	"Acquisition" 			"Sampic acquisition menu"
 verb	"Message" 		"Write message to screen"
 verb	"Wait" 			"Wait for a while"
+verb  "Return"    "Back to Shell (no QuickUSB termination)"
 verb	"Exit" 			"Back to Shell"
 
 
@@ -42,7 +43,7 @@ verb	"Query_reg" 	"Query one register"
 verb	"Write_reg" 	"Query one register"
 verb	"Dump_packet" 	"Get and dump one packet"
 verb	"Test" 			"Test configuration internal loop"
-verb	"Return" 		"Return to Main Menu"o Main Menu"
+verb	"Return" 		"Return to Main Menu"
 
 menu BBMenu_Acquisition_menu "Acquisition Menu" "ACQUISITION>> "
 verb	"Nb_of_bits" 	"Set voltage resolution"

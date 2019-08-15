@@ -5,6 +5,7 @@
 #include <chrono>
 #include <thread>
 #include <random>
+#include <array>
 #ifndef _WIN32
 #include <sys/file.h>
 #endif
@@ -12,14 +13,15 @@
 extern "C" {
 #include "sampicdaq/menus.h"
 #include "sampicdaq/quickusb.h"
+#include "sampicdaq/acq.h"
+#include "sampicdaq/sf2.h"
 }
 #include "QuickUSB.h"
 
 QHANDLE hDevice;
 
-//----------DOC-MARK-----BEG*DEC-----DOC-MARK----------
 class SampicProducer : public eudaq::Producer {
-  public:
+public:
   SampicProducer(const std::string & name, const std::string & runcontrol);
   void DoInitialise() override;
   void DoConfigure() override;
@@ -30,78 +32,95 @@ class SampicProducer : public eudaq::Producer {
   void RunLoop() override;
 
   static const uint32_t m_id_factory = eudaq::cstr2hash("SampicProducer");
+
 private:
-  std::string m_def_card_path;
-  std::string m_ini_card_path;
-  //bool m_flag_ts;
-  //bool m_flag_tg;
-  //uint32_t m_plane_id;
+  static const size_t m_buffer_size = 32000;
+
+  bool m_flag_ts;
   FILE* m_file_lock;
   std::chrono::milliseconds m_ms_busy;
   bool m_exit_of_run;
+  std::array<uint8_t,m_buffer_size> m_buffer;
 };
-//----------DOC-MARK-----END*DEC-----DOC-MARK----------
-//----------DOC-MARK-----BEG*REG-----DOC-MARK----------
+
 namespace{
   auto dummy0 = eudaq::Factory<eudaq::Producer>::
     Register<SampicProducer, const std::string&, const std::string&>(SampicProducer::m_id_factory);
 }
-//----------DOC-MARK-----END*REG-----DOC-MARK----------
-//----------DOC-MARK-----BEG*CON-----DOC-MARK----------
+
 SampicProducer::SampicProducer(const std::string & name, const std::string & runcontrol)
   :eudaq::Producer(name, runcontrol), m_file_lock(0), m_exit_of_run(false){
 }
-//----------DOC-MARK-----BEG*INI-----DOC-MARK----------
+
 void SampicProducer::DoInitialise(){
+  //--- parse the initialisation file
   auto ini = GetInitConfiguration();
-  std::string lock_path = ini->Get("SAMPIC_DEV_LOCK_PATH", "ex0lockfile.txt");
+  std::string lock_path = ini->Get("SAMPIC_DEV_LOCK_PATH", "sampic.lock");
+  std::string def_card_path = ini->Get("SAMPIC_DEF_CARD", "SampicDAQ_define.uic");
+  std::string ini_card_path = ini->Get("SAMPIC_INI_CARD", "@SampicDAQ_init");
+  
+  //--- find the QuickUSB interface
+  if (!qusb_find_modules())
+    EUDAQ_THROW("No QuickUSB modules found!");
+
+  //--- initialise the configuration parser
+  menu_init();
+  AllowInput = 1;
+
+  //--- first add a few definitions
+  define_file((char*)def_card_path.c_str());
+  //--- then add the acquisition configuration part
+  simulate_input((char*)ini_card_path.c_str());
+
+  //--- launch the configuration loop
+  Main_menu();
+
+  EUDAQ_INFO("Successfully loaded the definitions file \""+def_card_path+"\"\n"
+            +"and configured the module using \""+ini_card_path+"\".");
+
+  //--- introduce a lockfile
   m_file_lock = fopen(lock_path.c_str(), "a");
 #ifndef _WIN32
-  if(flock(fileno(m_file_lock), LOCK_EX|LOCK_NB)){ //fail
-    EUDAQ_THROW("unable to lock the lockfile: "+lock_path );
-  }
+  if (flock(fileno(m_file_lock), LOCK_EX|LOCK_NB)) //fail
+    EUDAQ_THROW("Unable to lock the lockfile: \""+lock_path+"\"");
 #endif
 }
 
-//----------DOC-MARK-----BEG*CONF-----DOC-MARK----------
 void SampicProducer::DoConfigure(){
+  //--- parse the configuration file
   auto conf = GetConfiguration();
-  conf->Print(std::cout);
-  //--- initialise the configuration parser
-  menu_init();
-  //--- find the QuickUSB interface
-  if(!qusb_find_modules()) {
-    EUDAQ_THROW("No QuickUSB modules found!");
-  }
-  //m_stop_second = conf->Get("SAMPIC_STOP_RUN_AFTER_N_SECONDS", 0);
-  m_def_card_path = conf->Get("SAMPIC_DEF_CARD", "SampicDAQ_define.uic");
-  m_ini_card_path = "@"+conf->Get("SAMPIC_INI_CARD", "SampicDAQ_init");
-  //--- first add a few definitions
-  define_file((char*)m_def_card_path.c_str());
-  //--- then initialise the DAQ
-  simulate_input((char*)m_ini_card_path.c_str());
-  /*m_plane_id = conf->Get("SAMPIC_PLANE_ID", 0);
-  m_ms_busy = std::chrono::milliseconds(conf->Get("SAMPIC_DURATION_BUSY_MS", 1000));
   m_flag_ts = conf->Get("SAMPIC_ENABLE_TIMESTAMP", 0);
-  m_flag_tg = conf->Get("SAMPIC_ENABLE_TRIGERNUMBER", 0);
-  if(!m_flag_ts && !m_flag_tg){
-    EUDAQ_WARN("Both Timestamp and TriggerNumber are disabled. Now, Timestamp is enabled by default");
-    m_flag_ts = false;
-    m_flag_tg = true;
-  }*/
+  DAQ_struct.GlobMaxEvt = conf->Get("SAMPIC_MAX_EVENTS", 0);
+
+  //conf->Print(std::cout);
 }
-//----------DOC-MARK-----BEG*RUN-----DOC-MARK----------
+
 void SampicProducer::DoStartRun(){
   m_exit_of_run = false;
+  std::string status(DAQ_struct.status);
+  if (status == "Running")
+    EUDAQ_THROW("Acquisition is already running!");
+  if (status != "Ready")
+    EUDAQ_THROW("Acquisition is not ready (status is \""+status+"\"). Aborting.");
+
+  //init daq params
+  DAQ_struct.GlobEvtNum = 0;
+  DAQ_struct.stop_req = 0;
+
+  if (DAQ_struct.GlobMaxEvt != 0)
+    EUDAQ_INFO("A total of "+std::to_string(DAQ_struct.GlobMaxEvt)+" event(s) "
+              +"will (hopefully) be collected.");
+  else
+    EUDAQ_INFO("Events will be collected until external stop request (or error...)");
 }
-//----------DOC-MARK-----BEG*STOP-----DOC-MARK----------
+
 void SampicProducer::DoStopRun(){
   m_exit_of_run = true;
 }
-//----------DOC-MARK-----BEG*RST-----DOC-MARK----------
+
 void SampicProducer::DoReset(){
   m_exit_of_run = true;
-  if(m_file_lock){
+  if (m_file_lock){
 #ifndef _WIN32
     flock(fileno(m_file_lock), LOCK_UN);
 #endif
@@ -110,50 +129,64 @@ void SampicProducer::DoReset(){
   }
   m_ms_busy = std::chrono::milliseconds();
   m_exit_of_run = false;
+
+  strcpy(DAQ_struct.status,"Ready");
+  EUDAQ_INFO("DAQ status changed to \""+std::string(DAQ_struct.status)+"\".");
 }
-//----------DOC-MARK-----BEG*TER-----DOC-MARK----------
+
 void SampicProducer::DoTerminate(){
   m_exit_of_run = true;
-  if(m_file_lock){
+  if (m_file_lock){
     fclose(m_file_lock);
     m_file_lock = 0;
   }
 }
-//----------DOC-MARK-----BEG*LOOP-----DOC-MARK----------
+
 void SampicProducer::RunLoop(){
-  /*auto tp_start_run = std::chrono::steady_clock::now();
-  uint32_t trigger_n = 0;
-  uint8_t x_pixel = 16;
-  uint8_t y_pixel = 16;
-  std::random_device rd;
-  std::mt19937 gen(rd());
-  std::uniform_int_distribution<uint32_t> position(0, x_pixel*y_pixel-1);
-  std::uniform_int_distribution<uint32_t> signal(0, 255);
-  while(!m_exit_of_run){
+  auto tp_start_run = std::chrono::steady_clock::now();
+  while (!m_exit_of_run) {
+    if (DAQ_struct.GlobMaxEvt > 0
+     && DAQ_struct.GlobEvtNum == DAQ_struct.GlobMaxEvt) {
+      EUDAQ_INFO("Maximum number of "+std::to_string(DAQ_struct.GlobMaxEvt)
+                +" event(s) reached.");
+      break;
+    }
+    if (std::string(DAQ_struct.status) == "Error")
+      EUDAQ_THROW("Data taking aborted due to fatal error detection.");
+    if (DAQ_struct.stop_req == 1) {
+      EUDAQ_WARN("Data taking aborted due to external request.");
+      break;
+    }
+
     auto ev = eudaq::Event::MakeUnique("SampicRaw");
-    ev->SetTag("Plane ID", std::to_string(m_plane_id));
+
     auto tp_trigger = std::chrono::steady_clock::now();
     auto tp_end_of_busy = tp_trigger + m_ms_busy;
-    if(m_flag_ts){
+    if (m_flag_ts) {
       std::chrono::nanoseconds du_ts_beg_ns(tp_trigger - tp_start_run);
-      std::chrono::nanoseconds du_ts_end_ns(tp_end_of_busy - tp_start_run);
-      ev->SetTimestamp(du_ts_beg_ns.count(), du_ts_end_ns.count());
+      ev->SetTimestamp(du_ts_beg_ns.count(), 0);
     }
-    if(m_flag_tg)
-      ev->SetTriggerN(trigger_n);
 
-    std::vector<uint8_t> hit(x_pixel*y_pixel, 0);
-    hit[position(gen)] = signal(gen);
-    std::vector<uint8_t> data;
-    data.push_back(x_pixel);
-    data.push_back(y_pixel);
-    data.insert(data.end(), hit.begin(), hit.end());
+    for (uint32_t feIndex=0; feIndex < 2; ++feIndex) {
+      int nByte=0;
+      if (SF2_RW_REG.DAQ_mode==1)
+        nByte = acq_get_stream(feIndex, m_buffer.data());
+      else
+        nByte = acq_get_built_stream(feIndex, m_buffer.data(), 0);
+      if (nByte < 0)
+        EUDAQ_THROW("Acquisition failed with code "+std::to_string(nByte));
+      if (nByte > m_buffer_size)
+        EUDAQ_ERROR("Buffer overflown! ("+std::to_string(nByte)+" > max_bytes="
+                   +std::to_string(m_buffer_size)+")");
+      if (nByte > 0) {
+        EUDAQ_INFO("got "+std::to_string(nByte)+" byte(s)");
+        ev->AddBlock(feIndex, std::vector<uint8_t>(m_buffer.begin(), m_buffer.begin()+nByte));
+      }
+    }
+    uint32_t trigger_n = 0; //FIXME
+    ev->SetTriggerN(trigger_n); //FIXME when to issue trigger
 
-    uint32_t block_id = m_plane_id;
-    ev->AddBlock(block_id, data);
     SendEvent(std::move(ev));
-    trigger_n++;
-    std::this_thread::sleep_until(tp_end_of_busy);
-  }*/
+  }
 }
-//----------DOC-MARK-----END*IMP-----DOC-MARK----------
+
