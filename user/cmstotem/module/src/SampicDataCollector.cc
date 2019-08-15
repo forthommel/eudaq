@@ -70,13 +70,6 @@ private:
   };
   typedef ChannelStream<64> ChannelStream64;
   
-  template<size_t N>
-  struct Event{
-    EventHeader header;
-    std::vector<ChannelStream<N> > channels;
-    uint16_t end_word;  
-  };
-
   template<typename T> static T grayDecode(T gray) {
     T bin = gray;
     while (gray >>= 1)
@@ -157,8 +150,10 @@ void SampicDataCollector::DoReceive(eudaq::ConnectionSPC idx, eudaq::EventSP evs
     auto& ev_front = conn_evque.second.front();
     for (uint32_t i = 0; i < m_num_sampic_mezz; ++i) {
       auto data_block = ev_front->GetBlock(i);
-      uint32_t offset = 0;
-      std::memcpy(&evt_header, &data_block[offset], sizeof(evt_header));
+      //--- reinterpret data as 16-bit words
+      uint16_t* data = reinterpret_cast<uint16_t*>(data_block.data());
+      uint16_t offset = 0;
+      std::memcpy(&evt_header, (void*)data[offset], sizeof(evt_header));
       offset += sizeof(evt_header);
       if (!evt_header.valid())
         EUDAQ_THROW("Event header is not valid!");
@@ -166,10 +161,14 @@ void SampicDataCollector::DoReceive(eudaq::ConnectionSPC idx, eudaq::EventSP evs
       std::vector<ChannelStream64> channels;
       for (uint16_t i = 0; i < evt_header.activeChannels(); ++i) {
         ChannelStream64 channel;
-        std::memcpy(&channel, &data_block[offset], sizeof(channel));
+        std::memcpy(&channel, (void*)data[offset], sizeof(channel));
         offset += sizeof(channel);
         channels.emplace_back(channel);
       }
+      if (data[offset] != m_event_end)
+        EUDAQ_THROW("Invalid event retrieved!");
+
+      //--- now need to do something with these unpacked data!
 
       if (ev_sync->GetTriggerN() == evt_header.triggerNumber()) {
         ev_sync->AddSubEvent(ev_front);

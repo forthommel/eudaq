@@ -180,9 +180,7 @@ void SampicProducer::RunLoop(){
                    +std::to_string(m_buffer_size)+")");
       if (num_bytes > 0) {
         EUDAQ_INFO("got "+std::to_string(num_bytes)+" byte(s)");
-        //--- reinterpret output as 16-bit words
-        uint16_t* ptr = reinterpret_cast<uint16_t*>(m_buffer.data());
-        ev->AddBlock(feIndex, std::vector<uint16_t>(ptr, ptr+num_bytes/2));
+        ev->AddBlock(feIndex, std::vector<uint8_t>(m_buffer.begin(), m_buffer.begin()+num_bytes));
       }
     }
     //uint32_t trigger_n = 0; //FIXME
