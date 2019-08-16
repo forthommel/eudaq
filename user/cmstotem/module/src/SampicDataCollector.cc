@@ -1,5 +1,7 @@
 #include "eudaq/DataCollector.hh"
 
+#include "SampicDataFormat.hh"
+
 #include <mutex>
 #include <deque>
 #include <map>
@@ -20,62 +22,6 @@ private:
   std::mutex m_mtx_map;
   std::map<eudaq::ConnectionSPC, std::deque<eudaq::EventSPC>> m_conn_evque;
   std::set<eudaq::ConnectionSPC> m_conn_inactive;
-
-  static const uint16_t m_event_begin = 0xebeb;
-  static const uint16_t m_event_end = 0xeeee;
-
-  struct EventHeader{
-    bool valid() const { return data[0] == m_event_begin; }
-    uint8_t boardId() const { return (data[1] >> 13) & 0x7; }
-    uint8_t sampicId() const { return (data[1] >> 12) & 0x1; }
-    uint64_t sf2Timestamp() const { return (data[2] & 0xffff)+((data[3] & 0xffff) << 16)+(data[4] & 0xf)*(1ull << 32); }
-    uint32_t eventNumber() const { return (data[5] & 0xffff)+((data[6] & 0xffff) << 16); }
-    uint32_t triggerNumber() const { return (data[7] & 0xffff)+((data[8] & 0xffff) << 16); }
-    uint16_t activeChannels() const { return data[9] & 0xffff; }
-    uint8_t readoutOffset() const { return (data[10] >> 8) & 0xff; }
-    uint8_t sampleNumber() const { return data[10] & 0xff; }
-    uint8_t fwVersion() const { return (data[11] >> 8) & 0xff; }
-    uint8_t clockMonitor() const { return data[11] & 0xff; }
-    std::array<uint16_t,12> data;
-  };
-
-  struct LpbusHeader{
-    uint16_t payload() const { return ((data[0] >> 8) & 0xff)+(data[1] & 0xff); }
-    uint8_t channelIndex() const { return data[0] & 0xff; }
-    uint8_t command() const { return (data[1] >> 8) & 0xff; }
-    std::array<uint16_t,2> data;
-  };
-
-  struct SampicHeader{
-    bool valid() const { return (data[0] & 0xff) == 0x69; }
-    uint8_t adcLatch() const { return (data[0] >> 8) & 0xff; }
-    uint64_t fpgaTimestamp() const { return ((data[1] >> 8) & 0xff)+((data[2] & 0xffff) << 8)+((data[3] & 0xffff) << 24); }
-    uint16_t sampicTimestampAGray() const { return data[4] & 0xffff; }
-    uint16_t sampicTimestampBGray() const { return data[5] & 0xffff; }
-    uint16_t sampicTimeStampA() const { return grayDecode<uint16_t>(sampicTimestampAGray()); }
-    uint16_t sampicTimeStampB() const { return grayDecode<uint16_t>(sampicTimestampBGray()); }
-    uint16_t cellInfo() const { return data[6] & 0xffff; }
-    std::array<uint16_t,7> data;
-  };
-
-  template<size_t N>
-  struct SampicStream{
-    SampicHeader header;
-    std::array<uint16_t,N> data;
-  };
-  template<size_t N>
-  struct ChannelStream{
-    LpbusHeader header;
-    SampicStream<N> sampic;
-  };
-  typedef ChannelStream<64> ChannelStream64;
-  
-  template<typename T> static T grayDecode(T gray) {
-    T bin = gray;
-    while (gray >>= 1)
-      bin ^= gray;
-    return bin;
-  }
 
   uint32_t m_print_hdr = 0;
   uint32_t m_print_evt = 0;
@@ -145,7 +91,7 @@ void SampicDataCollector::DoReceive(eudaq::ConnectionSPC idx, eudaq::EventSP evs
   auto ev_sync = eudaq::Event::MakeUnique("SampicTriggerEvent");
 
   //--- start filling the synchronised collection
-  EventHeader evt_header;
+  sampic::EventHeader evt_header;
   for (auto& conn_evque : m_conn_evque) {
     auto& ev_front = conn_evque.second.front();
     for (uint32_t i = 0; i < m_num_sampic_mezz; ++i) {
@@ -158,14 +104,14 @@ void SampicDataCollector::DoReceive(eudaq::ConnectionSPC idx, eudaq::EventSP evs
       if (!evt_header.valid())
         EUDAQ_THROW("Event header is not valid!");
 
-      std::vector<ChannelStream64> channels;
+      std::vector<sampic::ChannelStream64> channels;
       for (uint16_t i = 0; i < evt_header.activeChannels(); ++i) {
-        ChannelStream64 channel;
+        sampic::ChannelStream64 channel;
         std::memcpy(&channel, (void*)data[offset], sizeof(channel));
         offset += sizeof(channel);
         channels.emplace_back(channel);
       }
-      if (data[offset] != m_event_end)
+      if (data[offset] != sampic::m_event_end)
         EUDAQ_THROW("Invalid event retrieved!");
 
       //--- now need to do something with these unpacked data!

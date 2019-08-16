@@ -5,6 +5,7 @@ if(NOT EUDAQ_TTREE_LIBRARY)
   list(REMOVE_ITEM MODULE_SRC src/SampicRawEvent2TTreeEventConverter.cc)
 endif()
 
+include_directories(../extern)
 add_library(${EUDAQ_MODULE} SHARED ${MODULE_SRC})
 target_link_libraries(${EUDAQ_MODULE} ${EUDAQ_CORE_LIBRARY} ${EUDAQ_TTREE_LIBRARY})
 
