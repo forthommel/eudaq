@@ -147,6 +147,7 @@ acquisition  datapath ./ ret
 
 !@run
 
-message "prout"
+@../conf/config_channels
+
 return
 

@@ -1,0 +1,201 @@
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! Configure individual channels
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!!!!!!!!!  BOARD 0
+
+
+sampic ch_reg Set_rel_threshold 0 00 0.25 	ret ret
+sampic ch_reg discr_ext_source  0 00 FALSE 	ret ret
+sampic ch_reg trg_source  		0 00 EXT 	ret ret
+sampic ch_reg trg_ena     		0 00 true 	ret ret
+sampic ch_reg write 0 			  00 		ret ret
+
+sampic ch_reg Set_rel_threshold 0 01 0.25 	ret ret
+sampic ch_reg discr_ext_source  0 01 FALSE 	ret ret
+sampic ch_reg trg_source  		0 01 EXT 	ret ret
+sampic ch_reg trg_ena     		0 01 true 	ret ret
+sampic ch_reg write 0 			  01 		ret ret
+
+sampic ch_reg Set_rel_threshold 0 02 0.25 	ret ret
+sampic ch_reg discr_ext_source  0 02 FALSE 	ret ret
+sampic ch_reg trg_source  		0 02 EXT 	ret ret
+sampic ch_reg trg_ena     		0 02 true 	ret ret
+sampic ch_reg write 0 			  02 		ret ret
+
+sampic ch_reg Set_rel_threshold 0 03 0.25 	ret ret
+sampic ch_reg discr_ext_source  0 03 FALSE 	ret ret
+sampic ch_reg trg_source  		0 03 EXT 	ret ret
+sampic ch_reg trg_ena     		0 03 true 	ret ret
+sampic ch_reg write 0 			  03 		ret ret
+
+sampic ch_reg Set_rel_threshold 0 04 0.25 	ret ret
+sampic ch_reg discr_ext_source  0 04 FALSE 	ret ret
+sampic ch_reg trg_source  		0 04 EXT 	ret ret
+sampic ch_reg trg_ena     		0 04 true 	ret ret
+sampic ch_reg write 0 			  04 		ret ret
+
+sampic ch_reg Set_rel_threshold 0 05 0.25 	ret ret
+sampic ch_reg discr_ext_source  0 05 FALSE 	ret ret
+sampic ch_reg trg_source  		0 05 EXT 	ret ret
+sampic ch_reg trg_ena     		0 05 true 	ret ret
+sampic ch_reg write 0 			  05 		ret ret
+
+sampic ch_reg Set_rel_threshold 0 06 0.25 	ret ret
+sampic ch_reg discr_ext_source  0 06 FALSE 	ret ret
+sampic ch_reg trg_source  		0 06 EXT 	ret ret
+sampic ch_reg trg_ena     		0 06 true 	ret ret
+sampic ch_reg write 0 			  06 		ret ret
+
+sampic ch_reg Set_rel_threshold 0 07 0.25 	ret ret
+sampic ch_reg discr_ext_source  0 07 FALSE 	ret ret
+sampic ch_reg trg_source  		0 07 EXT 	ret ret
+sampic ch_reg trg_ena     		0 07 true 	ret ret
+sampic ch_reg write 0 			  07 		ret ret
+
+sampic ch_reg Set_rel_threshold 0 08 0.25 	ret ret
+sampic ch_reg discr_ext_source  0 08 FALSE 	ret ret
+sampic ch_reg trg_source  		0 08 EXT 	ret ret
+sampic ch_reg trg_ena     		0 08 true 	ret ret
+sampic ch_reg write 0 			  08 		ret ret
+
+sampic ch_reg Set_rel_threshold 0 09 0.25 	ret ret
+sampic ch_reg discr_ext_source  0 09 FALSE 	ret ret
+sampic ch_reg trg_source  		0 09 EXT 	ret ret
+sampic ch_reg trg_ena     		0 09 true 	ret ret
+sampic ch_reg write 0 			  09 		ret ret
+
+sampic ch_reg Set_rel_threshold 0 10 0.25 	ret ret
+sampic ch_reg discr_ext_source  0 10 FALSE 	ret ret
+sampic ch_reg trg_source  		0 10 EXT 	ret ret
+sampic ch_reg trg_ena     		0 10 FALSE 	ret ret
+sampic ch_reg write 0 			  10 		ret ret
+
+sampic ch_reg Set_rel_threshold 0 11 0.25 	ret ret
+sampic ch_reg discr_ext_source  0 11 FALSE 	ret ret
+sampic ch_reg trg_source  		0 11 EXT 	ret ret
+sampic ch_reg trg_ena     		0 11 true 	ret ret
+sampic ch_reg write 0 			  11 		ret ret
+
+sampic ch_reg Set_rel_threshold 0 12 0.25 	ret ret
+sampic ch_reg discr_ext_source  0 12 FALSE 	ret ret
+sampic ch_reg trg_source  		0 12 EXT 	ret ret
+sampic ch_reg trg_ena     		0 12 FALSE 	ret ret
+sampic ch_reg write 0 			  12 		ret ret
+
+sampic ch_reg Set_rel_threshold 0 13 0.25 	ret ret
+sampic ch_reg discr_ext_source  0 13 FALSE 	ret ret
+sampic ch_reg trg_source  		0 13 EXT 	ret ret
+sampic ch_reg trg_ena     		0 13 true 	ret ret
+sampic ch_reg write 0 			  13 		ret ret
+
+sampic ch_reg Set_rel_threshold 0 14 0.25 	ret ret
+sampic ch_reg discr_ext_source  0 14 FALSE 	ret ret
+sampic ch_reg trg_source  		0 14 EXT 	ret ret
+sampic ch_reg trg_ena     		0 14 true 	ret ret
+sampic ch_reg write 0 			  14 		ret ret
+
+sampic ch_reg Set_rel_threshold 0 15 0.25 	ret ret
+sampic ch_reg discr_ext_source  0 15 FALSE 	ret ret
+sampic ch_reg trg_source  		0 15 EXT 	ret ret
+sampic ch_reg trg_ena     		0 15 true 	ret ret
+sampic ch_reg write 0 			  15 		ret ret
+
+!!!!!!!!!  BOARD 1
+
+
+sampic ch_reg Set_rel_threshold 1 00 0.25 	ret ret
+sampic ch_reg discr_ext_source  1 00 FALSE 	ret ret
+sampic ch_reg trg_source  		1 00 EXT 	ret ret
+sampic ch_reg trg_ena     		1 00 FALSE 	ret ret
+sampic ch_reg write 1 			  00 		ret ret
+
+sampic ch_reg Set_rel_threshold 1 01 0.25 	ret ret
+sampic ch_reg discr_ext_source  1 01 FALSE 	ret ret
+sampic ch_reg trg_source  		1 01 EXT 	ret ret
+sampic ch_reg trg_ena     		1 01 FALSE 	ret ret
+sampic ch_reg write 1 			  01 		ret ret
+
+sampic ch_reg Set_rel_threshold 1 02 0.25 	ret ret
+sampic ch_reg discr_ext_source  1 02 FALSE 	ret ret
+sampic ch_reg trg_source  		1 02 EXT 	ret ret
+sampic ch_reg trg_ena     		1 02 FALSE 	ret ret
+sampic ch_reg write 1 			  02 		ret ret
+
+sampic ch_reg Set_rel_threshold 1 03 0.25 	ret ret
+sampic ch_reg discr_ext_source  1 03 FALSE 	ret ret
+sampic ch_reg trg_source  		1 03 EXT 	ret ret
+sampic ch_reg trg_ena     		1 03 true 	ret ret
+sampic ch_reg write 1 			  03 		ret ret
+
+sampic ch_reg Set_rel_threshold 1 04 0.25 	ret ret
+sampic ch_reg discr_ext_source  1 04 FALSE 	ret ret
+sampic ch_reg trg_source  		1 04 EXT 	ret ret
+sampic ch_reg trg_ena     		1 04 true 	ret ret
+sampic ch_reg write 1 			  04 		ret ret
+
+sampic ch_reg Set_rel_threshold 1 05 0.25 	ret ret
+sampic ch_reg discr_ext_source  1 05 FALSE 	ret ret
+sampic ch_reg trg_source  		1 05 EXT 	ret ret
+sampic ch_reg trg_ena     		1 05 true 	ret ret
+sampic ch_reg write 1 			  05 		ret ret
+
+sampic ch_reg Set_rel_threshold 1 06 0.25 	ret ret
+sampic ch_reg discr_ext_source  1 06 FALSE 	ret ret
+sampic ch_reg trg_source  		1 06 EXT 	ret ret
+sampic ch_reg trg_ena     		1 06 true 	ret ret
+sampic ch_reg write 1 			  06 		ret ret
+
+sampic ch_reg Set_rel_threshold 1 07 0.25 	ret ret
+sampic ch_reg discr_ext_source  1 07 FALSE 	ret ret
+sampic ch_reg trg_source  		1 07 EXT 	ret ret
+sampic ch_reg trg_ena     		1 07 true 	ret ret
+sampic ch_reg write 1 			  07 		ret ret
+
+sampic ch_reg Set_rel_threshold 1 08 0.25 	ret ret
+sampic ch_reg discr_ext_source  1 08 FALSE 	ret ret
+sampic ch_reg trg_source  		1 08 EXT 	ret ret
+sampic ch_reg trg_ena     		1 08 true 	ret ret
+sampic ch_reg write 1 			  08 		ret ret
+
+sampic ch_reg Set_rel_threshold 1 09 0.25 	ret ret
+sampic ch_reg discr_ext_source  1 09 FALSE 	ret ret
+sampic ch_reg trg_source  		1 09 EXT 	ret ret
+sampic ch_reg trg_ena     		1 09 true 	ret ret
+sampic ch_reg write 1 			  09 		ret ret
+
+sampic ch_reg Set_rel_threshold 1 10 0.25 	ret ret
+sampic ch_reg discr_ext_source  1 10 FALSE 	ret ret
+sampic ch_reg trg_source  		1 10 EXT 	ret ret
+sampic ch_reg trg_ena     		1 10 true 	ret ret
+sampic ch_reg write 1 			  10 		ret ret
+
+sampic ch_reg Set_rel_threshold 1 11 0.25 	ret ret
+sampic ch_reg discr_ext_source  1 11 FALSE 	ret ret
+sampic ch_reg trg_source  		1 11 EXT 	ret ret
+sampic ch_reg trg_ena     		1 11 true 	ret ret
+sampic ch_reg write 1 			  11 		ret ret
+
+sampic ch_reg Set_rel_threshold 1 12 0.25 	ret ret
+sampic ch_reg discr_ext_source  1 12 FALSE 	ret ret
+sampic ch_reg trg_source  		1 12 EXT 	ret ret
+sampic ch_reg trg_ena     		1 12 true 	ret ret
+sampic ch_reg write 1 			  12 		ret ret
+
+sampic ch_reg Set_rel_threshold 1 13 0.25 	ret ret
+sampic ch_reg discr_ext_source  1 13 FALSE 	ret ret
+sampic ch_reg trg_source  		1 13 EXT 	ret ret
+sampic ch_reg trg_ena     		1 13 true 	ret ret
+sampic ch_reg write 1 			  13 		ret ret
+
+sampic ch_reg Set_rel_threshold 1 14 0.25 	ret ret
+sampic ch_reg discr_ext_source  1 14 FALSE 	ret ret
+sampic ch_reg trg_source  		1 14 EXT 	ret ret
+sampic ch_reg trg_ena     		1 14 true 	ret ret
+sampic ch_reg write 1 			  14 		ret ret
+
+sampic ch_reg Set_rel_threshold 1 15 0.25 	ret ret
+sampic ch_reg discr_ext_source  1 15 FALSE 	ret ret
+sampic ch_reg trg_source  		1 15 EXT 	ret ret
+sampic ch_reg trg_ena     		1 15 true 	ret ret
+sampic ch_reg write 1 			  15 		ret ret

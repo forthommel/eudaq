@@ -1,0 +1,32 @@
+
+
+
+SF2 set_samp_trg Disabled ret
+Sf2  Set_DAQ_mode qusb_builded ret
+
+sf2 set_fast software ret
+SF2 send_cmd 2 ret  !! resynch
+
+wait 1 !ret
+
+sf2 set_fast ext_ttl ret
+
+fea set_control_reg 1 0 ret !!! release DLL reset
+fea set_control_reg 0 0 ret !!! release DLL reset
+fea set_control_reg 1 1 ret !!! release fpga trigger
+fea set_control_reg 1 31 ret !!! release sampic trigger <- asynch trigger enabled
+!fea set_control_reg 1 21 ret !!! release sampic trigger <- L1A Synch direct trigger enabled
+fea set_control_reg 0 1 ret !!! release fpga trigger
+fea set_control_reg 0 31 ret !!! release sampic trigger <- asynch trigger enabled
+!fea set_control_reg 0 21 ret !!! release sampic trigger <- L1A Synch direct trigger enabled
+
+sf2 set_op_mode acquisition ret
+
+SF2 set_samp_trg L1A_LHCClk ret
+
+message "Ready for running"
+
+
+!ac begin
+
+ret

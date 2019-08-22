@@ -1,5 +1,6 @@
 #include "eudaq/DataCollector.hh"
 
+#include "sampicdaq/acq.h"
 #include "SampicDataFormat.hh"
 
 #include <mutex>
@@ -25,7 +26,6 @@ private:
 
   uint32_t m_print_hdr = 0;
   uint32_t m_print_evt = 0;
-  uint32_t m_num_sampic_mezz = 2;
 };
 
 namespace{
@@ -61,7 +61,6 @@ void SampicDataCollector::DoConfigure(){
     conf->Print();
     m_print_hdr = conf->Get("SAMPIC_PRINT_HEADERS", 0);
     m_print_evt = conf->Get("SAMPIC_PRINT_EVENTS", 0);
-    m_num_sampic_mezz = conf->Get("SAMPIC_NUM_MEZZANINES", 2);
   }
 }
 
@@ -69,7 +68,6 @@ void SampicDataCollector::DoReset(){
   std::unique_lock<std::mutex> lk(m_mtx_map); // a bit of thread safety...
   m_print_hdr = 0;
   m_print_evt = 0;
-  m_num_sampic_mezz = 2;
   m_conn_evque.clear();
   m_conn_inactive.clear();
 }
@@ -88,63 +86,8 @@ void SampicDataCollector::DoReceive(eudaq::ConnectionSPC idx, eudaq::EventSP evs
   }
 
   //--- build new event
-  auto ev_sync = eudaq::Event::MakeUnique("SampicTriggerEvent");
+  auto ev_sync = eudaq::Event::MakeUnique("SampicEvent");
 
-  //--- start filling the synchronised collection
-  sampic::EventHeader evt_header;
-  for (auto& conn_evque : m_conn_evque) {
-    auto& ev_front = conn_evque.second.front();
-    for (uint32_t i = 0; i < m_num_sampic_mezz; ++i) {
-      auto data_block = ev_front->GetBlock(i);
-      //--- reinterpret data as 16-bit words
-      uint16_t* data = reinterpret_cast<uint16_t*>(data_block.data());
-      uint16_t offset = 0;
-      std::memcpy(&evt_header, (void*)data[offset], sizeof(evt_header));
-      offset += sizeof(evt_header);
-      if (!evt_header.valid())
-        EUDAQ_THROW("Event header is not valid!");
-
-      std::vector<sampic::ChannelStream64> channels;
-      for (uint16_t i = 0; i < evt_header.activeChannels(); ++i) {
-        sampic::ChannelStream64 channel;
-        std::memcpy(&channel, (void*)data[offset], sizeof(channel));
-        offset += sizeof(channel);
-        channels.emplace_back(channel);
-      }
-      if (data[offset] != sampic::m_event_end)
-        EUDAQ_THROW("Invalid event retrieved!");
-
-      //--- now need to do something with these unpacked data!
-
-      if (ev_sync->GetTriggerN() == evt_header.triggerNumber()) {
-        ev_sync->AddSubEvent(ev_front);
-        ev_sync->SetEventN(evt_header.eventNumber());
-        ev_sync->SetTriggerN(evt_header.triggerNumber());
-      }
-    }
-  }
-  //ev_sync->SetFlagPacket();
-  //ev_sync->SetTriggerN(trigger_n);
-  /*for (auto& conn_evque: m_conn_evque){
-    auto& ev_front = conn_evque.second.front();
-    if (ev_front->GetTriggerN() == trigger_n){
-      ev_sync->AddSubEvent(ev_front);
-      conn_evque.second.pop_front();
-    }
-  }
-
-  if (!m_conn_inactive.empty()){
-    std::set<eudaq::ConnectionSPC> conn_inactive_empty;
-    for (auto& conn: m_conn_inactive){
-      if (m_conn_evque.find(conn) != m_conn_evque.end() && m_conn_evque[conn].empty()) {
-        m_conn_evque.erase(conn);
-        conn_inactive_empty.insert(conn);
-      }
-    }
-    for (auto& conn: conn_inactive_empty){
-      m_conn_inactive.erase(conn);
-    }
-  }*/
   if (m_print_evt)
     ev_sync->Print(std::cout);
 
