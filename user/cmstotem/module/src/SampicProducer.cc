@@ -102,6 +102,7 @@ void SampicProducer::DoStartRun(){
 
 void SampicProducer::DoStopRun(){
   m_exit_of_run = true;
+  EUDAQ_INFO("Collected "+std::to_string(m_num_events)+" event(s)");
 }
 
 void SampicProducer::DoReset(){
@@ -148,35 +149,34 @@ void SampicProducer::RunLoop(){
                    +std::to_string(m_buffer_size)+")");
 
       if (num_bytes > 0) {
-        EUDAQ_DEBUG("block "+std::to_string(feIndex)+" got "+std::to_string(num_bytes)+" byte(s)");
         std::vector<uint8_t> data(m_buffer.begin(), m_buffer.begin()+num_bytes);
-        int ret = acq_reco_stream(data.data(), data.size(), events.data(), 1, 0, 0);
+        int ret = sampic_reco_stream(data.data(), data.size(), events.data(), 1, 0, 0);
         if (ret > 0) {
-          EUDAQ_INFO("Number of events reconstructed: "+std::to_string(ret));
           for (int i=0; i < ret; ++i) {
+            // build a new event or retrieve an existing one
             auto& ev = map_events[events[i].header.triggerNumber];
             if (!ev) {
               ev = eudaq::Event::MakeUnique("SampicRaw");
+              ev->SetTriggerN(events[i].header.triggerNumber);
+              ev->SetEventN(events[i].header.eventNumber);
               if (m_flag_ts) {
                 auto tp_trigger = std::chrono::steady_clock::now();
                 std::chrono::nanoseconds du_ts_beg_ns(tp_trigger - tp_start_run);
                 ev->SetTimestamp(du_ts_beg_ns.count(), 0);
               }
-              ev->SetTriggerN(events[i].header.triggerNumber);
-              ev->SetEventN(events[i].header.eventNumber);
             }
             ev->AddBlock(feIndex, data);
           }
         }
       }
     }
+    // send all packets in temporary map
     for (auto it = map_events.begin(); it != map_events.end(); /*no increment*/) {
       if (it->second->GetNumBlock() == m_num_sampic_mezz) {
         SendEvent(std::move(it->second));
         it = map_events.erase(it);
         if (m_num_events++ % 1000 == 0)
           EUDAQ_INFO("Number of events sent: "+std::to_string(m_num_events));
-        EUDAQ_DEBUG("Number of map elements: "+std::to_string(map_events.size()));
       }
       else
         ++it;
