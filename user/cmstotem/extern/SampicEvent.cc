@@ -1,4 +1,5 @@
-#include "SampicDataFormat.hh"
+#include "SampicEvent.hh"
+
 #include <algorithm>
 
 using namespace eudaq;
@@ -27,6 +28,7 @@ SampicEvent::SampicEvent(const Event& ev)
 SampicEvent::SampicEvent(Deserializer& ds) :
   StandardEvent(ds)
 {
+  std::cout << __PRETTY_FUNCTION__<<std::endl;
   //FIXME implement ds.read(...) methods
 }
 

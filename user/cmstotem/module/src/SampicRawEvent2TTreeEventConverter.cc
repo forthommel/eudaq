@@ -1,8 +1,7 @@
 #include "eudaq/TTreeEventConverter.hh"
 #include "eudaq/RawEvent.hh"
 
-#include "SampicDataFormat.hh"
-#include "sampicdaq/sampic.h"
+#include "SampicEvent.hh"
 
 class SampicRawEvent2TTreeEventConverter: public eudaq::TTreeEventConverter{
 public:
