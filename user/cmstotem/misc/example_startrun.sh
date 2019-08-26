@@ -14,3 +14,4 @@ $BINPATH/euCliMonitor -n SampicMonitor -t sampic_mon &
 $BINPATH/euCliProducer -n SampicProducer -t sampic_pd &
 $BINPATH/euCliCollector -n EventIDSyncDataCollector -t sampic_dc &
 #$BINPATH/euCliConverter -n SampicRaw -t sampic_
+#$BINPATH/StdEventMonitor -t StdEventMonitor -r tcp://127.0.0.1 &

@@ -17,5 +17,9 @@ namespace{
 bool SampicRawEvent2StdEventConverter::Converting(eudaq::EventSPC d1, eudaq::StdEventSP d2, eudaq::ConfigSPC conf) const{
   auto ev = std::dynamic_pointer_cast<const eudaq::RawEvent>(d1);
   d2.reset(new eudaq::SampicEvent(*ev));
+  if (!d2) {
+    EUDAQ_ERROR("Failed to convert the raw event into a Sampic event");
+    return false;
+  }
   return true;
 }

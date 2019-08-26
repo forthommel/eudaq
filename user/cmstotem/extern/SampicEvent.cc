@@ -21,20 +21,24 @@ SampicEvent::SampicEvent()
 
 SampicEvent::SampicEvent(const Event& ev)
 {
-  for (auto& block_n: ev.GetBlockNumList())
+  SetType(m_id_factory);
+  for (auto& block_n: ev.GetBlockNumList()) {
+    std::cout << __PRETTY_FUNCTION__ << "<<< block " << block_n << std::endl;
     ConvertBlock(ev.GetBlock(block_n));
+  }
+  std::cout << __PRETTY_FUNCTION__ << "<<< done!"<< std::endl;
 }
 
 SampicEvent::SampicEvent(Deserializer& ds) :
   StandardEvent(ds)
 {
-  std::cout << __PRETTY_FUNCTION__<<std::endl;
+  std::cout << __PRETTY_FUNCTION__ << " is not yet implemented!" << std::endl;
   //FIXME implement ds.read(...) methods
 }
 
 void SampicEvent::Serialize(Serializer& ser) const
 {
-  StandardEvent::Serialize(ser);
+  Event::Serialize(ser);
   ser.write(*m_header.data());
   for (const auto& ch : m_ch_stream) {
     ser.write(*ch.header.data());
@@ -46,18 +50,25 @@ void SampicEvent::Serialize(Serializer& ser) const
 
 void SampicEvent::ConvertBlock(const std::vector<uint8_t>& block8)
 {
+  if (block8.empty())
+    return;
+  if (block8.size() % 2 != 0)
+    throw std::runtime_error("Invalid size for data block: "+std::to_string(block8.size()));
   // first convert byte stream into short stream
   std::vector<uint16_t> block;
-  for (size_t i = 0; i < block8.size()/2; ++i)
+  for (size_t i = 0; i < block8.size()/sizeof(uint16_t); ++i)
     block.emplace_back(
        (block8.at(2*i)         & 0x00ff) |
       ((block8.at(2*i+1) << 8) & 0xff00));
+
   // then cast everything in its right place
   auto it = block.begin();
 
   while (it != block.end()) {
-    std::copy_n(it, sizeof(sampic::EventHeader)/sizeof(uint16_t), m_header.begin());
-    it += sizeof(sampic::EventHeader)/sizeof(uint16_t);
+    std::copy_n(it, m_size_header, m_header.begin());
+    it += m_size_header;
+
+std::cout << __PRETTY_FUNCTION__ << "<<< header valid?" << m_header.valid() << std::endl;
 
     // count the number of active channels in event
     size_t channel_in_evt = 0;
@@ -66,27 +77,29 @@ void SampicEvent::ConvertBlock(const std::vector<uint8_t>& block8)
       channel_in_evt += ch_map & 0x1;
       ch_map >>= 1;
     }
+    std::cout << __PRETTY_FUNCTION__ << "<<< " << std::hex << m_header.activeChannels() << std::dec << "/num of channels: " << channel_in_evt << std::endl;
 
     // unpack each channel
     for (size_t i = 0; i < channel_in_evt; ++i) {
       sampic::ChannelStream<64> stream;
 
-      std::copy_n(it, sizeof(sampic::LpbusHeader)/sizeof(uint16_t), stream.header.begin());
-      it += sizeof(sampic::LpbusHeader)/sizeof(uint16_t);
-      std::copy_n(it, sizeof(sampic::SampicHeader)/sizeof(uint16_t), stream.sampic.header.begin());
-      it += sizeof(sampic::SampicHeader)/sizeof(uint16_t);
+      std::copy_n(it, m_size_lpbus_header, stream.header.begin());
+      it += m_size_lpbus_header;
+      
+      std::copy_n(it, m_size_sampic_header, stream.sampic.header.begin());
+      it += m_size_sampic_header;
 
       // unpack each sample
-      for (size_t j = 0; j < stream.sampic.samples.size(); ++j) {
-        stream.sampic.samples[j] = *it;
-        it++;
-      }
+      for (size_t j = 0; j < stream.sampic.samples.size(); ++j)
+        stream.sampic.samples[j] = sampic::grayDecode<uint16_t>(*(it++));
+      std::cout << "new channel: " << (int)stream.header.channelIndex() << "/" << (int)(stream.sampic.header.channelId()) << ", payload=" << stream.header.payload() << std::endl;
       m_ch_stream.push_back(stream);
     }
-    std::copy_n(it, sizeof(sampic::EventTrailer)/sizeof(uint16_t), m_trailer.begin());
+    std::cout << __PRETTY_FUNCTION__ << "<<< " << m_ch_stream.size() << std::endl;
+    std::copy_n(it, m_size_trailer, m_trailer.begin());
     if (!m_trailer.valid())
       throw std::runtime_error("Invalid trailer ("+std::to_string(*it)+") retrieved!");
-    it += sizeof(sampic::EventTrailer)/sizeof(uint16_t);
+    it += m_size_trailer;
   }
 }
 

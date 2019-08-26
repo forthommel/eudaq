@@ -1,14 +1,52 @@
+set(EXT_DIR ../extern)
+set(MON_DIR ${PROJECT_SOURCE_DIR}/monitors/onlinemon)
+
 include_directories(include)
 aux_source_directory(src MODULE_SRC)
-aux_source_directory(../extern EXTERN_SRC)
+aux_source_directory(${EXT_DIR} EXTERN_SRC)
 
 if(NOT EUDAQ_TTREE_LIBRARY)
   list(REMOVE_ITEM MODULE_SRC src/SampicRawEvent2TTreeEventConverter.cc)
+  list(REMOVE_ITEM MODULE_SRC src/SampiMonitor.cc)
+else()
+  aux_source_directory(${MON_DIR}/src MON_SRC)
+  list(APPEND CMAKE_PREFIX_PATH $ENV{ROOTSYS})
+  find_package(ROOT REQUIRED COMPONENTS Gui)
+  include_directories(${MON_DIR} ${MON_DIR}/include)
+  set(THISMON Monitor)
+  set(THISMON_DICT_CXX ${CMAKE_CURRENT_BINARY_DIR}/${THISMON}_ROOT.cxx)
+  root_generate_dictionary(${THISMON}_ROOT ${MON_DIR}/include/OnlineMonWindow.hh)
+  aux_source_directory(src THISMON_SRC)
+  #add_executable(${THISMON} ${THISMON_DICT_CXX} ${ROOT_LIBRARIES})
+
+  message(STATUS ${CMAKE_CURRENT_BINARY_DIR})
+  add_library(${THISMON} SHARED ${MON_SRC} ${THISMON_DICT_CXX})
+  target_link_libraries(${THISMON} ${ROOT_LIBRARIES} ${EUDAQ_CORE_LIBRARY})
+  if(ROOT_VERSION_MAJOR GREATER 5)
+    target_compile_definitions(${THISMON} PRIVATE -DEUDAQ_LIB_ROOT6)
+    set(ROOTProducer_PCM ${CMAKE_CURRENT_BINARY_DIR}/${THISMON}_ROOT_rdict.pcm)
+    set(ROOTProducer_MAP ${CMAKE_CURRENT_BINARY_DIR}/${THISMON}_ROOT.rootmap)
+    install(FILES
+      ${ROOTProducer_PCM}
+      ${ROOTProducer_MAP}
+      DESTINATION lib)
+  endif()
+  install(TARGETS
+    ${THISMON}
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib)
+  #install(Monitor_ROOT_rdict.pcm DESTINATION bin)
 endif()
 
-include_directories(../extern)
+include_directories(${EXT_DIR})
 add_library(${EUDAQ_MODULE} SHARED ${MODULE_SRC} ${EXTERN_SRC})
 target_link_libraries(${EUDAQ_MODULE} ${EUDAQ_CORE_LIBRARY} ${EUDAQ_TTREE_LIBRARY})
+
+if(EUDAQ_TTREE_LIBRARY)
+  target_include_directories(${EUDAQ_MODULE} PRIVATE ${MON_DIR})
+  target_link_libraries(${EUDAQ_MODULE} ${THISMON})
+endif()
 
 # specific linking for the Sampic manipulation
 find_library(SAMPICDAQ_LIB SampicDAQ HINTS ENV SAMPICDAQ_DIR)

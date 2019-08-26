@@ -2,6 +2,9 @@
 #include "eudaq/StandardEvent.hh"
 #include "eudaq/StdEventConverter.hh"
 
+#include "include/OnlineMon.hh"
+//#include "include/OnlineMonWindow.hh"
+
 #include "SampicEvent.hh"
 
 #include <iostream>
@@ -11,7 +14,10 @@
 #include <thread>
 #include <random>
 
-class SampicMonitor : public eudaq::Monitor {
+#include "TGClient.h"
+
+//class SampicMonitor : public eudaq::Monitor {
+class SampicMonitor : public RootMonitor {
 public:
   SampicMonitor(const std::string & name, const std::string & runcontrol);
   void DoInitialise() override;
@@ -28,6 +34,8 @@ private:
   bool m_en_print;
   bool m_en_std_converter;
   bool m_en_std_print;
+
+  //OnlineMonWindow *m_onlinemon;
 };
 
 namespace{
@@ -36,7 +44,10 @@ namespace{
 }
 
 SampicMonitor::SampicMonitor(const std::string & name, const std::string & runcontrol)
-  :eudaq::Monitor(name, runcontrol){  
+  //:eudaq::Monitor(name, runcontrol),
+  // m_onlinemon(nullptr){
+  :RootMonitor(runcontrol, 0, 0, 800, 600, "", name){
+  //m_onlinemon = new OnlineMonWindow(gClient->GetRoot(),800,600);
 }
 
 void SampicMonitor::DoInitialise(){

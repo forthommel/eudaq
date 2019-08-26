@@ -20,15 +20,12 @@ bool SampicRawEvent2TTreeEventConverter::Converting(eudaq::EventSPC d1, eudaq::T
   std::cout << "ID " << id << std::endl;*/
   auto event = std::make_shared<eudaq::SampicEvent>(*ev);
 
-    /*uint8_t x_pixel = block[0];
-    uint8_t y_pixel = block[1];
-    std::vector<uint8_t> hit(block.begin()+2, block.end());
-    std::vector<uint8_t> hitxv;
-    if(hit.size() != x_pixel*y_pixel)
-      EUDAQ_THROW("Unknown data");
-    TString temp = "block"; 
-    if (d2->GetListOfBranches()->FindObject(temp))  d2->SetBranchAddress(temp,&x_pixel);
-    else
-      d2->Branch(temp,&x_pixel,"x_pixel/b:y_pixel/b");*/
+  float maxAmplitude = 10.f;
+
+  TString temp = "maxAmplitude"; 
+  if (d2->GetListOfBranches()->FindObject(temp))
+    d2->SetBranchAddress(temp, &maxAmplitude);
+  else
+    d2->Branch(temp, &maxAmplitude, "maxAmplitude/F");
   return true;
 }

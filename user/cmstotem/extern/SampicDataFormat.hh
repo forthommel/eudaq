@@ -39,13 +39,15 @@ namespace sampic {
 
   struct SampicHeader : std::array<uint16_t,7> {
     bool valid() const { return (at(0) & 0xff) == 0x69; }
-    uint8_t adcLatch() const { return (at(0) >> 8) & 0xff; }
+    uint8_t adcLatch() const { return (at(0) >> 8) & 0xff /*+(at(1) >> 8) & 0xff*/; }
     uint64_t fpgaTimestamp() const { return ((at(1) >> 8) & 0xff)+((at(2) & 0xffff) << 8)+((at(3) & 0xffff) << 24); }
     uint16_t sampicTimestampAGray() const { return at(4) & 0xffff; }
     uint16_t sampicTimestampBGray() const { return at(5) & 0xffff; }
     uint16_t sampicTimeStampA() const { return grayDecode<uint16_t>(sampicTimestampAGray()); }
     uint16_t sampicTimeStampB() const { return grayDecode<uint16_t>(sampicTimestampBGray()); }
     uint16_t cellInfo() const { return at(6) & 0xffff; }
+    uint8_t channelId() { return (cellInfo() >> 6) & 0xf; }
+    uint8_t sampicCellInfo() const { return cellInfo() & 0x3f; }
   };
 
   template<size_t N>

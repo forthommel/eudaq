@@ -24,6 +24,10 @@ namespace eudaq {
     static const uint32_t m_id_factory = cstr2hash("SampicEvent");
 
   private:
+    static constexpr size_t m_size_header = sizeof(sampic::EventHeader)/sizeof(uint16_t);
+    static constexpr size_t m_size_lpbus_header = sizeof(sampic::LpbusHeader)/sizeof(uint16_t);
+    static constexpr size_t m_size_sampic_header = sizeof(sampic::SampicHeader)/sizeof(uint16_t);
+    static constexpr size_t m_size_trailer = sizeof(sampic::EventTrailer)/sizeof(uint16_t);
     sampic::EventHeader m_header;
     std::vector<sampic::ChannelStream<64> > m_ch_stream;
     sampic::EventTrailer m_trailer;
