@@ -23,9 +23,9 @@ namespace{
 }
 
 SampicMonitor::SampicMonitor(const std::string & name, const std::string & runcontrol)
-  //:eudaq::Monitor(name, runcontrol),
-  // m_onlinemon(nullptr){
-  :RootMonitor(runcontrol, 0, 0, 800, 600, "", name){
+  :eudaq::Monitor(name, runcontrol),
+   m_onlinemon(new OnlineMonWindow(gClient->GetRoot(),800,600)){
+  //:RootMonitor(runcontrol, 0, 0, 800, 600, "", name){
   //m_onlinemon = new OnlineMonWindow(gClient->GetRoot(),800,600);
 }
 

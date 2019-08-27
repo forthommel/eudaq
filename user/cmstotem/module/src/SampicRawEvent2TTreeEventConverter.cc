@@ -22,7 +22,7 @@ bool SampicRawEvent2TTreeEventConverter::Converting(eudaq::EventSPC d1, eudaq::T
 
   float maxAmplitude = 10.f;
 
-  TString temp = "maxAmplitude"; 
+  const char* temp = "maxAmplitude";
   if (d2->GetListOfBranches()->FindObject(temp))
     d2->SetBranchAddress(temp, &maxAmplitude);
   else
