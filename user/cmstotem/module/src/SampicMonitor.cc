@@ -5,6 +5,7 @@
 #include "include/OnlineMon.hh"
 //#include "include/OnlineMonWindow.hh"
 
+#include "SampicMonitor.hh"
 #include "SampicEvent.hh"
 
 #include <iostream>
@@ -15,28 +16,6 @@
 #include <random>
 
 #include "TGClient.h"
-
-//class SampicMonitor : public eudaq::Monitor {
-class SampicMonitor : public RootMonitor {
-public:
-  SampicMonitor(const std::string & name, const std::string & runcontrol);
-  void DoInitialise() override;
-  void DoConfigure() override;
-  void DoStartRun() override {}
-  void DoStopRun() override {}
-  void DoTerminate() override {}
-  void DoReset() override {}
-  void DoReceive(eudaq::EventSP ev) override;
-  
-  static const uint32_t m_id_factory = eudaq::cstr2hash("SampicMonitor");
-  
-private:
-  bool m_en_print;
-  bool m_en_std_converter;
-  bool m_en_std_print;
-
-  //OnlineMonWindow *m_onlinemon;
-};
 
 namespace{
   auto dummy0 = eudaq::Factory<eudaq::Monitor>::
