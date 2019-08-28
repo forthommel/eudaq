@@ -3,6 +3,8 @@
 
 #include "SampicEvent.hh"
 
+#include <numeric>
+
 class SampicRawEvent2TTreeEventConverter: public eudaq::TTreeEventConverter{
 public:
   bool Converting(eudaq::EventSPC d1, eudaq::TTreeEventSP d2, eudaq::ConfigSPC conf) const override;
@@ -10,6 +12,15 @@ public:
 private:
   template<typename T> void RegisterVariable(eudaq::TTreeEventSP&, const char*, T*, const char*) const;
   //mutable bool m_first = true;
+  struct eventblock_t {
+    int num_samples = 0;
+    int channel_id[100] = {-1};
+    int fpga_timestamp[100] = {0};
+  };
+  struct channelblock_t {
+    int num_samples = 0;
+    float max_ampl[10] = {100.};
+  };
 };
 
 namespace{
@@ -33,58 +44,37 @@ void SampicRawEvent2TTreeEventConverter::RegisterVariable(eudaq::TTreeEventSP& e
 
 bool SampicRawEvent2TTreeEventConverter::Converting(eudaq::EventSPC d1, eudaq::TTreeEventSP d2, eudaq::ConfigSPC conf) const{
   //std::cout << __PRETTY_FUNCTION__ << std::endl;
+  int num_baseline = 10;
+  if (conf)
+    num_baseline = conf->Get("NUM_BASELINE", 10);
+
   auto ev = std::dynamic_pointer_cast<const eudaq::RawEvent>(d1);
-  ev->Print(std::cout);
-  //if (m_first) {
-    /*d2->Branch("x_pixel", &m_x_pixel, "x_pixel/I");
-    d2->Branch("samples", &m_samples, "samples/I");
-    d2->Branch("max_ampl", m_max_ampl, "max_ampl[samples]/I");*/
-    //m_first = false;
-  //}
-  /*if (!d2->IsFlagPacket()) {
-    d2->SetFlag(d1->GetFlag());
-    d2->SetRunN(d1->GetRunN());
-    d2->SetEventN(d1->GetEventN());
-    d2->SetStreamN(d1->GetStreamN());
-    d2->SetTriggerN(d1->GetTriggerN(), d1->IsFlagTrigger());
-    d2->SetTimestamp(d1->GetTimestampBegin(), d1->GetTimestampEnd(), d1->IsFlagTimestamp());
-  }*/
-
-  /*uint32_t id = ev->GetExtendWord();
-  std::cout << "ID " << id << std::endl;*/
+  eventblock_t ev_block;
+  channelblock_t ch_block[32];
+  RegisterVariable<eventblock_t>(d2, "sampic", &ev_block, "num_samples/I:channel_id[100]/I:fpga_timestamp[100]/I");
+  for (uint16_t i = 0; i < 32; ++i) {
+    RegisterVariable<channelblock_t>(d2, Form("channel%d", i), &ch_block[i], "num_samples/I:max_ampl[10]/F");
+  }
   std::cout << "ev =" << d1->GetEventN() << std::endl;
-  //ev->AddSubEvent(d1);
-  std::cout << "nsub =" << d1->GetNumSubEvent() << std::endl;
   auto event = std::make_shared<eudaq::SampicEvent>(*ev);
-  float x_pixel, samples, max_ampl[100];
-  //event->Print(std::cout);
-  /*for (const auto& smp : *event) {
+  event->Print(std::cout);
+  std::cout << "id=" << (int)event->header().boardId() << std::endl;
+  for (const auto& smp : *event) {
     const auto& sampic_info = smp.sampic;
-    std::cout << sampic_info.header.fpgaTimestamp() << std::endl;
-    for (const auto& sample : sampic_info.samples) std::cout << ">>" << sample;
-    std::cout << std::endl;
-  }*/
-    /*uint8_t y_pixel = block[1];
-    std::vector<uint8_t> hit(block.begin()+2, block.end());
-    std::vector<uint8_t> hitxv;
-    if(hit.size() != x_pixel*y_pixel)
-      EUDAQ_THROW("Unknown data");
-    TString temp = "block";*/
-
-    x_pixel = 42;
-    samples = 10;
-    for (int i = 0; i < samples; ++i) max_ampl[i] = 1+i;
-
-
-    std::cout << x_pixel << "|" << samples << "|" << max_ampl[0] << std::endl;
-
-  /*if (d2->GetListOfBranches()->FindObject("x_pixel"))
-    d2->SetBranchAddress("x_pixel", &x_pixel);
-  else
-    d2->Branch("x_pixel", &x_pixel, "x_pixel/b");*/
-    RegisterVariable<float>(d2, "x_pixel", &x_pixel, "x_pixel/F");
-    RegisterVariable<float>(d2, "samples", &samples, "samples/F");
-    RegisterVariable<float>(d2, "max_ampl", max_ampl, "max_ampl[samples]/F");
-    d2->Fill();
+    //const unsigned short ch_id = smp.header.channelIndex();
+    const unsigned short ch_id = event->header().boardId()*16+sampic_info.header.channelIndex(); //FIXME use previous
+    ev_block.channel_id[ev_block.num_samples] = ch_id;
+    ev_block.fpga_timestamp[ev_block.num_samples] = sampic_info.header.fpgaTimestamp();
+    const float baseline = std::accumulate(
+      sampic_info.samples.begin(), std::next(sampic_info.samples.begin(), num_baseline-1), 0.)/(num_baseline-1);
+    for (const auto& s : sampic_info.samples) {
+      if (s < ch_block[ch_id].max_ampl[ev_block.num_samples])
+        ch_block[ch_id].max_ampl[ev_block.num_samples] = (float)s;
+    }
+    ch_block[ch_id].max_ampl[ev_block.num_samples] -= baseline;
+    ch_block[ch_id].num_samples++;
+    ev_block.num_samples++;
+  }
+  d2->Fill();
   return true;
 }

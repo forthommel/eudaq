@@ -46,6 +46,8 @@ namespace sampic {
     uint16_t sampicTimeStampA() const { return grayDecode<uint16_t>(sampicTimestampAGray()); }
     uint16_t sampicTimeStampB() const { return grayDecode<uint16_t>(sampicTimestampBGray()); }
     uint16_t cellInfo() const { return at(6) & 0xffff; }
+    uint8_t channelIndex() const { return (cellInfo() >> 6) & 0xf; }
+    uint8_t sampicCellInfo() const { return cellInfo() & 0x3f; }
   };
 
   template<size_t N>

@@ -26,6 +26,10 @@ SampicEvent::SampicEvent(const Event& ev)
     ConvertBlock(ev.GetBlock(block_n));
 }
 
+SampicEvent::SampicEvent(const SampicEvent& ev)
+  :m_header(ev.m_header), m_ch_stream(ev.m_ch_stream), m_trailer(ev.m_trailer){
+}
+
 SampicEvent::SampicEvent(Deserializer& ds) :
   StandardEvent(ds)
 {

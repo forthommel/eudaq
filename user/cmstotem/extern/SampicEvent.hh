@@ -14,6 +14,7 @@ namespace eudaq {
   public:
     SampicEvent();
     SampicEvent(const Event&);
+    SampicEvent(const SampicEvent&);
     SampicEvent(Deserializer&);
 
     void Serialize(Serializer&) const override;
