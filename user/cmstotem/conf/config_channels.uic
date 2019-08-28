@@ -4,6 +4,23 @@
 
 !!!!!!!!!  BOARD 0
 
+!!!!! channels mapping
+quickusb i2c_write 10 0 1 ret
+quickusb i2c_write 11 1 1 ret
+quickusb i2c_write 12 2 1 ret
+quickusb i2c_write 13 3 1 ret
+quickusb i2c_write 14 4 1 ret
+quickusb i2c_write 15 5 1 ret
+quickusb i2c_write 16 6 1 ret
+quickusb i2c_write 17 7 1 ret
+quickusb i2c_write 18 8 1 ret
+quickusb i2c_write 19 9 1 ret
+quickusb i2c_write 1a a 1 ret
+quickusb i2c_write 1b b 1 ret
+quickusb i2c_write 1c c 1 ret
+quickusb i2c_write 1d d 1 ret
+quickusb i2c_write 1e e 1 ret
+quickusb i2c_write 1f f 1 ret
 
 sampic ch_reg Set_rel_threshold 0 00 0.25 	ret ret
 sampic ch_reg discr_ext_source  0 00 FALSE 	ret ret
@@ -103,6 +120,23 @@ sampic ch_reg write 0 			  15 		ret ret
 
 !!!!!!!!!  BOARD 1
 
+!!!!! channels mapping
+quickusb i2c_write 20 10 1 ret
+quickusb i2c_write 21 11 1 ret
+quickusb i2c_write 22 12 1 ret
+quickusb i2c_write 23 13 1 ret
+quickusb i2c_write 24 14 1 ret
+quickusb i2c_write 25 15 1 ret
+quickusb i2c_write 26 16 1 ret
+quickusb i2c_write 27 17 1 ret
+quickusb i2c_write 28 18 1 ret
+quickusb i2c_write 29 19 1 ret
+quickusb i2c_write 2a 1a 1 ret
+quickusb i2c_write 2b 1b 1 ret
+quickusb i2c_write 2c 1c 1 ret
+quickusb i2c_write 2d 1d 1 ret
+quickusb i2c_write 2e 1e 1 ret
+quickusb i2c_write 2f 1f 1 ret
 
 sampic ch_reg Set_rel_threshold 1 00 0.25 	ret ret
 sampic ch_reg discr_ext_source  1 00 FALSE 	ret ret
