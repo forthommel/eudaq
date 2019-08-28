@@ -30,6 +30,7 @@ public:
 
 private:
   static const size_t m_buffer_size = 32000;
+  using buffer_t = std::array<uint8_t,m_buffer_size>;
   void LoadConfiguration(std::string) const;
 
   std::string m_def_card_path;
@@ -40,7 +41,7 @@ private:
   FILE* m_file_lock = 0;
   std::chrono::milliseconds m_ms_busy;
   bool m_exit_of_run = false;
-  std::array<uint8_t,m_buffer_size> m_buffer;
+  buffer_t m_buffer;
   QHANDLE hDevice;
 };
 
@@ -130,6 +131,7 @@ void SampicProducer::RunLoop(){
   auto tp_start_run = std::chrono::steady_clock::now();
   std::map<unsigned int,eudaq::EventUP> map_events;
   std::array<SampicEvent_t,512> events;
+  std::array<int,512> event_sizes;
 
   while (!m_exit_of_run) {
     if (m_max_events > 0 && m_num_events == m_max_events) { //FIXME
@@ -144,35 +146,53 @@ void SampicProducer::RunLoop(){
         EUDAQ_THROW("Acquisition failed with code "+std::to_string(num_bytes));
       if (num_bytes == 0)
         continue;
-      if (num_bytes > m_buffer_size)
+      if (num_bytes > m_buffer_size) {
         EUDAQ_ERROR("Buffer overflown! ("+std::to_string(num_bytes)+" > max_bytes="
                    +std::to_string(m_buffer_size)+")");
+        continue;
+      }
 
-      if (num_bytes > 0) {
-        std::vector<uint8_t> data(m_buffer.begin(), m_buffer.begin()+num_bytes);
-        int ret = sampic_reco_stream(data.data(), data.size(), events.data(), 1, 0, 0);
-        if (ret > 0) {
-          for (int i=0; i < ret; ++i) {
-            // build a new event or retrieve an existing one
-            auto& ev = map_events[events[i].header.triggerNumber];
-            if (!ev) {
-              ev = eudaq::Event::MakeUnique("SampicRaw");
-              ev->SetTriggerN(events[i].header.triggerNumber);
-              ev->SetEventN(events[i].header.eventNumber);
-              if (m_flag_ts) {
-                auto tp_trigger = std::chrono::steady_clock::now();
-                std::chrono::nanoseconds du_ts_beg_ns(tp_trigger - tp_start_run);
-                ev->SetTimestamp(du_ts_beg_ns.count(), 0);
-              }
+      auto it = m_buffer.begin();
+      int ret = sampic_reco_stream(m_buffer.begin(), num_bytes, events.data(), event_sizes.data(), 1, 0, 0);
+      if (ret == 0) // nothing was retrieved
+        continue;
+      else if (ret < 0) { // error was encountered
+        if (ret == -1)
+          EUDAQ_WARN("At least one invalid frame header retrieved");
+        else if (ret == -2)
+          EUDAQ_WARN("At least one invalid Sampic event header retrieved");
+        else if (ret == -3)
+          EUDAQ_WARN("At least one invalid frame trailer retrieved");
+        else
+          EUDAQ_THROW("Unknown error encountered: ret="+std::to_string(ret));
+      }
+      else { // normal unpacking
+        for (int i=0; i < ret; ++i) {
+          // build a new event or retrieve an existing one
+          const auto& header = events[i].header;
+          auto& ev = map_events[header.triggerNumber];
+          if (!ev) {
+            ev = eudaq::Event::MakeUnique("SampicRaw");
+            ev->SetTriggerN(header.triggerNumber);
+            ev->SetEventN(header.eventNumber);
+            if (m_flag_ts) {
+              auto tp_trigger = std::chrono::steady_clock::now();
+              std::chrono::nanoseconds du_ts_beg_ns(tp_trigger - tp_start_run);
+              ev->SetTimestamp(du_ts_beg_ns.count(), 0);
             }
-            ev->AddBlock(feIndex, data);
           }
+          ev->AddBlock(feIndex, std::vector<uint8_t>(it, it+event_sizes.at(i)));
+          it += event_sizes.at(i);
         }
+        if (std::distance(m_buffer.begin(), it) != num_bytes)
+          EUDAQ_THROW("Invalid number of frames retrieved!"
+                     +std::to_string(std::distance(m_buffer.begin(), it))
+                     +"/"+std::to_string(num_bytes));
       }
     }
     // send all packets in temporary map
     for (auto it = map_events.begin(); it != map_events.end(); /*no increment*/) {
-      if (it->second->GetNumBlock() == m_num_sampic_mezz) {
+      if (it->second->GetNumBlock() == m_num_sampic_mezz) { // all mezzanines sent something
         SendEvent(std::move(it->second));
         it = map_events.erase(it);
         if (m_num_events++ % 1000 == 0)
