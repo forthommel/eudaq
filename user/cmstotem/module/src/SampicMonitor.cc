@@ -4,13 +4,11 @@
 #include "TFile.h"
 #include "TTree.h"
 
+#include "MonitorWindow.hh"
 #include "SampicEvent.hh"
 
 #include "TApplication.h"
 #include "TTimer.h"
-#include "TGFrame.h"
-#include "TGStatusBar.h"
-#include "TGListTree.h"
 
 #include <iostream>
 #include <fstream>
@@ -42,8 +40,7 @@ private:
   bool m_en_std_converter;
   bool m_en_std_print;
 
-  std::unique_ptr<TGMainFrame> m_main;
-  TGStatusBar* m_status_bar;
+  std::unique_ptr<MonitorWindow> m_main;
   std::future<bool> m_daemon;
 };
 
@@ -55,43 +52,19 @@ namespace{
 SampicMonitor::SampicMonitor(const std::string & name, const std::string & runcontrol)
   :eudaq::Monitor(name, runcontrol),
    TApplication(name.c_str(), nullptr, nullptr),
-   m_main(new TGMainFrame(gClient->GetRoot(), 800, 600)){
+   m_main(new MonitorWindow(this, "Sampic monitor")){
   if (!m_main)
     EUDAQ_THROW("Error Allocationg main window");
-  m_main->MapWindow();
-  m_main->SetWindowName("Sampic monitor");
   std::cout << __PRETTY_FUNCTION__ << std::endl;
+
   TApplication::SetReturnFromRun(true);
   if (!m_daemon.valid())
     m_daemon = std::async(std::launch::async, &SampicMonitor::Run, this);
 
-  auto top_win = new TGHorizontalFrame(m_main.get());
-  auto left_bar = new TGVerticalFrame(top_win);
-  auto left_canv = new TGCanvas(left_bar, 200, 600);
-  auto vp = left_canv->GetViewPort();
-
-  auto left_tree = new TGListTree(left_canv, kHorizontalFrame);
-  //left_tree->Connect("Clicked(TGListTreeItem*, Int_t)", "OnlineMonWindow", this,
-  //                   "actor(TGListTreeItem*, Int_t)");
-  //left_tree->Connect("Clicked(TGListTreeItem*, Int_t, Int_t, Int_t)",
-  //                   "OnlineMonWindow", this,
-  //                   "actorMenu(TGListTreeItem*, Int_t, Int_t, Int_t)");
-  vp->AddFrame(left_tree, new TGLayoutHints(kLHintsExpandY | kLHintsExpandY, 5, 5, 5, 5));
-
-
-  m_status_bar = new TGStatusBar(m_main.get(), 510, 10, kHorizontalFrame);
-  int parts[4] = {25, 25, 25, 25};
-  m_status_bar->SetParts(parts, 4);
-  m_status_bar->SetText("IDLE", 0);
-  m_status_bar->SetText("Run: N/A", 1);
-  m_status_bar->SetText("Curr. event: ", 2);
-  m_status_bar->SetText("Analysed events: ", 3);
-  m_main->AddFrame(m_status_bar, new TGLayoutHints(kLHintsBottom | kLHintsExpandX, 0, 0, 2, 0));
+  //m_main->Connect("CloseWindow()", "MainFrame", this, "~SampicMonitor()");
 }
 
 SampicMonitor::~SampicMonitor(){
-  if (m_daemon.valid())
-    m_daemon.get();
   TApplication::Terminate();
 }
 
@@ -109,7 +82,7 @@ void SampicMonitor::DoConfigure(){
 }
 
 void SampicMonitor::DoStartRun(){
-  m_status_bar->SetText(Form("Run: %u", GetRunNumber()), 1);
+  m_main->SetRunNumber(GetRunNumber());
   m_file.reset(TFile::Open(Form("run%d.root", GetRunNumber()), "recreate"));
   m_stdev.reset(new TTree);
 }
@@ -125,7 +98,7 @@ void SampicMonitor::DoReceive(eudaq::EventSP ev){
 }
 
 bool SampicMonitor::Run(){
-  TApplication::Run();
+  TApplication::Run(false);
   return true;
 }
 

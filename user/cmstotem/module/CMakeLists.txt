@@ -7,6 +7,24 @@ if(NOT EUDAQ_TTREE_LIBRARY)
 else()
   list(APPEND CMAKE_PREFIX_PATH $ENV{ROOTSYS})
   find_package(ROOT REQUIRED COMPONENTS Gui)
+  set(THISMON MonitorWindow)
+  set(THISMON_DICT_CXX ${CMAKE_CURRENT_BINARY_DIR}/${THISMON}_ROOT.cxx)
+  root_generate_dictionary(${THISMON}_ROOT ../extern/MonitorWindow.hh)
+  list(APPEND EXTERN_SRC ${THISMON_DICT_CXX})
+  if(ROOT_VERSION_MAJOR GREATER 5)
+    #target_compile_definitions(${THISMON} PRIVATE -DEUDAQ_LIB_ROOT6)
+    set(ROOTProducer_PCM ${CMAKE_CURRENT_BINARY_DIR}/${THISMON}_ROOT_rdict.pcm)
+    set(ROOTProducer_MAP ${CMAKE_CURRENT_BINARY_DIR}/${THISMON}_ROOT.rootmap)
+    install(FILES
+      ${ROOTProducer_PCM}
+      ${ROOTProducer_MAP}
+      DESTINATION lib)
+  endif()
+  #install(TARGETS
+  #  ${THISMON}
+  #  RUNTIME DESTINATION bin
+  #  LIBRARY DESTINATION lib
+  #  ARCHIVE DESTINATION lib)
 endif()
 
 include_directories(../extern)
