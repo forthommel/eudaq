@@ -16,7 +16,12 @@ namespace sampic {
     bool valid() const { return at(0) == m_event_begin; }
     uint8_t boardId() const { return (at(1) >> 13) & 0x7; }
     uint8_t sampicId() const { return (at(1) >> 12) & 0x1; }
-    uint64_t sf2Timestamp() const { return (at(2) & 0xffff)+((at(3) & 0xffff) << 16)+(at(4) & 0xf)*(1ull << 32); }
+    uint64_t sf2Timestamp() const {
+      return
+         ((uint64_t)at(2)        & 0x00000ffff) |
+        (((uint64_t)at(3) << 16) & 0x0ffff0000) |
+        (((uint64_t)at(4) << 32) & 0xf00000000);
+    }
     uint32_t eventNumber() const { return (at(5) & 0xffff)+((at(6) & 0xffff) << 16); }
     uint32_t triggerNumber() const { return (at(7) & 0xffff)+((at(8) & 0xffff) << 16); }
     uint16_t activeChannels() const { return at(9) & 0xffff; }
@@ -46,6 +51,8 @@ namespace sampic {
     uint16_t sampicTimeStampA() const { return grayDecode<uint16_t>(sampicTimestampAGray()); }
     uint16_t sampicTimeStampB() const { return grayDecode<uint16_t>(sampicTimestampBGray()); }
     uint16_t cellInfo() const { return at(6) & 0xffff; }
+    uint8_t channelIndex() const { return (cellInfo() >> 6) & 0xf; }
+    uint8_t sampicCellInfo() const { return cellInfo() & 0x3f; }
   };
 
   template<size_t N>

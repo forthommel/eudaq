@@ -21,14 +21,19 @@ SampicEvent::SampicEvent()
 
 SampicEvent::SampicEvent(const Event& ev)
 {
+  SetType(m_id_factory);
   for (auto& block_n: ev.GetBlockNumList())
     ConvertBlock(ev.GetBlock(block_n));
+}
+
+SampicEvent::SampicEvent(const SampicEvent& ev)
+  :m_header(ev.m_header), m_ch_stream(ev.m_ch_stream), m_trailer(ev.m_trailer){
 }
 
 SampicEvent::SampicEvent(Deserializer& ds) :
   StandardEvent(ds)
 {
-  std::cout << __PRETTY_FUNCTION__<<std::endl;
+  std::cout << __PRETTY_FUNCTION__ << " not yet implemented!" << std::endl;
   //FIXME implement ds.read(...) methods
 }
 
@@ -54,7 +59,6 @@ void SampicEvent::ConvertBlock(const std::vector<uint8_t>& block8)
       ((block8.at(2*i+1) << 8) & 0xff00));
   // then cast everything in its right place
   auto it = block.begin();
-
   while (it != block.end()) {
     std::copy_n(it, sizeof(sampic::EventHeader)/sizeof(uint16_t), m_header.begin());
     it += sizeof(sampic::EventHeader)/sizeof(uint16_t);
