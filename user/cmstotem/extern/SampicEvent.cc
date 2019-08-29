@@ -82,7 +82,7 @@ void SampicEvent::ConvertBlock(const std::vector<uint8_t>& block8)
 
       // unpack each sample
       for (size_t j = 0; j < stream.sampic.samples.size(); ++j) {
-        stream.sampic.samples[j] = sampic::grayDecode<uint16_t>(*it);
+        stream.sampic.samples[j] = sampic::kSampicADCDepth*sampic::grayDecode<uint16_t>(*it);
         it++;
       }
       m_ch_stream.push_back(stream);

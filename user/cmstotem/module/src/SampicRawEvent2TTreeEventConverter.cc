@@ -61,7 +61,7 @@ bool SampicRawEvent2TTreeEventConverter::Converting(eudaq::EventSPC d1, eudaq::T
     "channel_id[100]/I:"
     "fpga_timestamp[100]/I");
   for (uint16_t i = 0; i < 32; ++i)
-    RegisterVariable<channelblock_t>(d2, Form("channel%d", i), &ch_block[i],
+    RegisterVariable<channelblock_t>(d2, Form("ch%d", i), &ch_block[i],
       "num_samples/I:"
       "ampl[10][64]/F:"
       "max_ampl[10]/F");
@@ -81,8 +81,10 @@ bool SampicRawEvent2TTreeEventConverter::Converting(eudaq::EventSPC d1, eudaq::T
     const unsigned short ch_id = event->header().boardId()*16+sampic_info.header.channelIndex(); //FIXME use previous
     ev_block.channel_id[ev_block.num_samples] = ch_id;
     ev_block.fpga_timestamp[ev_block.num_samples] = sampic_info.header.fpgaTimestamp();
-    const float baseline = std::accumulate(
-      sampic_info.samples.begin(), std::next(sampic_info.samples.begin(), num_baseline-1), 0.)/(num_baseline-1);
+    const float baseline = 1./(num_baseline-1)*std::accumulate(
+      sampic_info.samples.begin(),
+      std::next(sampic_info.samples.begin(), num_baseline-1),
+      0.);
     uint16_t i = 0;
     for (const auto& s : sampic_info.samples) {
       ch_block[ch_id].ampl[ev_block.num_samples][i] = (float)s-baseline;
