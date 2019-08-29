@@ -14,7 +14,7 @@ namespace sampic {
   }
   /// SAMPIC sampling period for the whole window
   static const float kSamplingPeriod = 1./7.695; // in ns
-  static const float kSampicADCDepth = 1.; // in V
+  static const float kSampicADCDepth = 1./2048.; // in V
 
   struct EventHeader : std::array<uint16_t,12> {
     static constexpr uint16_t m_event_begin = 0xebeb;
@@ -68,7 +68,16 @@ namespace sampic {
   template<size_t N>
   struct SampicStream{
     SampicHeader header;
-    std::array<uint16_t,N> samples;
+    std::vector<float> samples() const {
+      std::vector<float> smp;
+      for (const auto& val : samples_raw) {
+        uint16_t raw_val = sampic::grayDecode<uint16_t>((val >> 1) & 0x7ff);
+        smp.emplace_back(sampic::kSampicADCDepth*raw_val);
+      }
+      return smp;
+    }
+
+    std::array<uint16_t,N> samples_raw;
   };
 
   template<size_t N>
