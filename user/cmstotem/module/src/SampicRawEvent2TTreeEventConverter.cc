@@ -11,9 +11,9 @@ public:
   static const uint32_t m_id_factory = eudaq::cstr2hash("SampicRaw");
 private:
   template<typename T> void RegisterVariable(eudaq::TTreeEventSP&, const char*, T*, const char*) const;
-  //mutable bool m_first = true;
   struct eventblock_t {
     uint64_t timestamp = 0;
+    int event_num = 0;
     float time[64] = {0.};
     int num_samples = 0;
     int channel_id[100] = {-1};
@@ -33,8 +33,6 @@ namespace{
 
 template<typename T>
 void SampicRawEvent2TTreeEventConverter::RegisterVariable(eudaq::TTreeEventSP& ev, const char* name, T* var, const char* leaflist) const{
-//std::cout << ev->GetListOfBranches()->Size() << std::endl;
-//ev->Print();
   if (ev->GetListOfBranches()->FindObject(name)) {
     int status = ev->SetBranchAddress(name, var);
     if (status != 0)
@@ -46,7 +44,6 @@ void SampicRawEvent2TTreeEventConverter::RegisterVariable(eudaq::TTreeEventSP& e
 }
 
 bool SampicRawEvent2TTreeEventConverter::Converting(eudaq::EventSPC d1, eudaq::TTreeEventSP d2, eudaq::ConfigSPC conf) const{
-  //std::cout << __PRETTY_FUNCTION__ << std::endl;
   int num_baseline = 10;
   if (conf) {
     num_baseline = conf->Get("NUM_BASELINE", 10);
@@ -58,7 +55,8 @@ bool SampicRawEvent2TTreeEventConverter::Converting(eudaq::EventSPC d1, eudaq::T
   eventblock_t ev_block;
   channelblock_t ch_block[32];
   RegisterVariable<eventblock_t>(d2, "event", &ev_block,
-    "timestamp/l:time[64]/F:"
+    "timestamp/l:event_num/I:"
+    "time[64]/F:"
     "num_samples/I:"
     "channel_id[100]/I:"
     "fpga_timestamp[100]/I");
@@ -69,8 +67,9 @@ bool SampicRawEvent2TTreeEventConverter::Converting(eudaq::EventSPC d1, eudaq::T
       "max_ampl[10]/F");
 
   ev_block.timestamp = event->header().sf2Timestamp();
+  ev_block.event_num = event->header().eventNumber();
   for (uint16_t i = 0; i < event->header().sampleNumber(); ++i)
-    ev_block.time[i] = (float)i; //FIXME retrieve sampling frequency!
+    ev_block.time[i] = i*sampic::kSamplingPeriod;
 
   std::cout << "ev = " << d1->GetEventN() << " at " << ev_block.timestamp << std::endl;
 

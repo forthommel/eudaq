@@ -11,6 +11,8 @@ namespace sampic {
     return bin;
   }
 
+  static const float kSamplingPeriod = 1./7.695; // in ns
+
   struct EventHeader : std::array<uint16_t,12> {
     static constexpr uint16_t m_event_begin = 0xebeb;
     bool valid() const { return at(0) == m_event_begin; }
