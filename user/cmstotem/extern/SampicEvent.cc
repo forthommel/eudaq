@@ -44,7 +44,7 @@ void SampicEvent::Serialize(Serializer& ser) const
   for (const auto& ch : m_ch_stream) {
     ser.write(*ch.header.data());
     ser.write(*ch.sampic.header.data());
-    ser.write(*ch.sampic.samples.data());
+    ser.write(*ch.sampic.samples_raw.data());
   }
   ser.write(*m_trailer.data());
 }
@@ -60,8 +60,8 @@ void SampicEvent::ConvertBlock(const std::vector<uint8_t>& block8)
   // then cast everything in its right place
   auto it = block.begin();
   while (it != block.end()) {
-    std::copy_n(it, sizeof(sampic::EventHeader)/sizeof(uint16_t), m_header.begin());
-    it += sizeof(sampic::EventHeader)/sizeof(uint16_t);
+    std::copy_n(it, m_header_size, m_header.begin());
+    it += m_header_size;
 
     // count the number of active channels in event
     size_t channel_in_evt = 0;
@@ -75,22 +75,22 @@ void SampicEvent::ConvertBlock(const std::vector<uint8_t>& block8)
     for (size_t i = 0; i < channel_in_evt; ++i) {
       sampic::ChannelStream<64> stream;
 
-      std::copy_n(it, sizeof(sampic::LpbusHeader)/sizeof(uint16_t), stream.header.begin());
-      it += sizeof(sampic::LpbusHeader)/sizeof(uint16_t);
-      std::copy_n(it, sizeof(sampic::SampicHeader)/sizeof(uint16_t), stream.sampic.header.begin());
-      it += sizeof(sampic::SampicHeader)/sizeof(uint16_t);
+      std::copy_n(it, m_lpbus_hdr_size, stream.header.begin());
+      it += m_lpbus_hdr_size;
+      std::copy_n(it, m_sampic_hdr_size, stream.sampic.header.begin());
+      it += m_sampic_hdr_size;
 
       // unpack each sample
-      for (size_t j = 0; j < stream.sampic.samples.size(); ++j) {
-        stream.sampic.samples[j] = sampic::grayDecode<uint16_t>(*it);
+      for (size_t j = 0; j < stream.sampic.samples_raw.size(); ++j) {
+        stream.sampic.samples_raw[j] = (*it);
         it++;
       }
       m_ch_stream.push_back(stream);
     }
-    std::copy_n(it, sizeof(sampic::EventTrailer)/sizeof(uint16_t), m_trailer.begin());
+    std::copy_n(it, m_trailer_size, m_trailer.begin());
     if (!m_trailer.valid())
       throw std::runtime_error("Invalid trailer ("+std::to_string(*it)+") retrieved!");
-    it += sizeof(sampic::EventTrailer)/sizeof(uint16_t);
+    it += m_trailer_size;
   }
 }
 
@@ -117,4 +117,3 @@ void SampicEvent::Print(std::ostream& os, size_t offset) const
   StandardEvent::Print(os,offset+2);
   os << std::string(offset, ' ') << "</SampicEvent>\n";
 }
-

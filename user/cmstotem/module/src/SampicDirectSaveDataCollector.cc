@@ -9,7 +9,7 @@ namespace eudaq {
       static const uint32_t m_id_factory = cstr2hash("SampicDirectSaveDataCollector");
 
     private:
-      uint32_t m_noprint;
+      bool m_ev_print;
   };
 
   namespace{
@@ -19,20 +19,17 @@ namespace eudaq {
   }
 
   void SampicDirectSaveDataCollector::DoConfigure(){
-    m_noprint = 0;
+    m_ev_print = false;
     auto conf = GetConfiguration();
-    if(conf){
+    if (conf){
       conf->Print();
-      m_noprint = conf->Get("DISABLE_PRINT", 0);
+      m_ev_print = conf->Get("PRINT_RAW_EVENTS", 0);
     }
   }
 
   void SampicDirectSaveDataCollector::DoReceive(ConnectionSPC id, EventSP ev){
-    if(!m_noprint)
+    if (m_ev_print)
       ev->Print(std::cout);
-    /*auto ev_out = Event::MakeUnique("SampicRaw");
-    ev_out->AddSubEvent(ev);
-    WriteEvent(std::move(ev_out));*/
     WriteEvent(ev);
   }
 }

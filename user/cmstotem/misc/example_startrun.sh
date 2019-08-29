@@ -5,7 +5,7 @@ BINPATH=../../../bin
 #sleep 1
 $BINPATH/euLog &
 sleep 1
-###$BINPATH/euCliMonitor -n SampicMonitor -t sampic_mon &
+$BINPATH/euCliMonitor -n SampicMonitor -t sampic_mon &
 ###$BINPATH/euCliCollector -n SampicDataCollector -t sampic_dc &
 # The following data collectors are provided if you build user/eudet
 $BINPATH/euCliCollector -n SampicDirectSaveDataCollector -t sampic_dc &

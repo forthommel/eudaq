@@ -1,6 +1,7 @@
 #include "eudaq/Monitor.hh"
 #include "eudaq/TTreeEventConverter.hh"
 
+#include "TFile.h"
 #include "TTree.h"
 
 #include "SampicEvent.hh"
@@ -25,7 +26,7 @@ public:
   void DoInitialise() override;
   void DoConfigure() override;
   void DoStartRun() override;
-  void DoStopRun() override {}
+  void DoStopRun() override;
   void DoTerminate() override {}
   void DoReset() override {}
   void DoReceive(eudaq::EventSP ev) override;
@@ -35,6 +36,8 @@ public:
 private:
   bool Run();
 
+  std::unique_ptr<TFile> m_file;
+  eudaq::TTreeEventSP m_stdev;
   bool m_en_print;
   bool m_en_std_converter;
   bool m_en_std_print;
@@ -92,10 +95,6 @@ SampicMonitor::~SampicMonitor(){
   TApplication::Terminate();
 }
 
-void SampicMonitor::DoStartRun(){
-  m_status_bar->SetText(Form("Run: %u", GetRunNumber()), 1);
-}
-
 void SampicMonitor::DoInitialise(){
   auto ini = GetInitConfiguration();
   ini->Print(std::cout);
@@ -109,20 +108,28 @@ void SampicMonitor::DoConfigure(){
   m_en_std_print = conf->Get("SAMPIC_ENABLE_STD_PRINT", 0);
 }
 
+void SampicMonitor::DoStartRun(){
+  m_status_bar->SetText(Form("Run: %u", GetRunNumber()), 1);
+  m_file.reset(TFile::Open(Form("run%d.root", GetRunNumber()), "recreate"));
+  m_stdev.reset(new TTree);
+}
+
 void SampicMonitor::DoReceive(eudaq::EventSP ev){
   if(m_en_print)
     ev->Print(std::cout);
   if(m_en_std_converter){
-    eudaq::TTreeEventSP stdev;
-    std::cout << "to be converted!!!"<<std::endl;
-    eudaq::TTreeEventConverter::Convert(ev, stdev, nullptr); //no conf
-    std::cout << "converted!!!"<<std::endl;
+    eudaq::TTreeEventConverter::Convert(ev, m_stdev, nullptr); //no conf
     if (m_en_std_print)
-      stdev->Show(0);//(std::cout);
+      m_stdev->Print();//(std::cout);
   }
 }
 
 bool SampicMonitor::Run(){
   TApplication::Run();
   return true;
+}
+
+void SampicMonitor::DoStopRun(){
+  m_stdev->Write("monitor");
+  m_file->Close();
 }

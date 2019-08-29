@@ -22,7 +22,7 @@ private:
   struct channelblock_t {
     int num_samples = 0;
     float ampl[10][64] = {0.};
-    float max_ampl[10] = {100.};
+    float max_ampl[10] = {10.};
   };
 };
 
@@ -36,62 +36,70 @@ void SampicRawEvent2TTreeEventConverter::RegisterVariable(eudaq::TTreeEventSP& e
   if (ev->GetListOfBranches()->FindObject(name)) {
     int status = ev->SetBranchAddress(name, var);
     if (status != 0)
-      EUDAQ_THROW("Invalid SetBranchAddress status, returned "+std::to_string(status));
+      EUDAQ_THROW("Invalid SetBranchAddress status for branch \""+std::string(name)+"\", returned "+std::to_string(status));
   }
   else
     if (ev->Branch(name, var, leaflist) == nullptr)
-      EUDAQ_THROW("Failed to add a new branch to output tree");
+      EUDAQ_THROW("Failed to add a new branch \""+std::string(name)+"\" to output tree");
 }
 
 bool SampicRawEvent2TTreeEventConverter::Converting(eudaq::EventSPC d1, eudaq::TTreeEventSP d2, eudaq::ConfigSPC conf) const{
-  int num_baseline = 10;
+  int num_baseline = 10, num_channels = 32;
   if (conf) {
     num_baseline = conf->Get("NUM_BASELINE", 10);
+    num_channels = conf->Get("NUM_CHANNELS", 32);
   }
 
   auto ev = std::dynamic_pointer_cast<const eudaq::RawEvent>(d1);
   auto event = std::make_shared<eudaq::SampicEvent>(*ev);
 
   eventblock_t ev_block;
-  channelblock_t ch_block[32];
-  RegisterVariable<eventblock_t>(d2, "event", &ev_block,
-    "timestamp/l:event_num/I:"
-    "time[64]/F:"
-    "num_samples/I:"
-    "channel_id[100]/I:"
-    "fpga_timestamp[100]/I");
-  for (uint16_t i = 0; i < 32; ++i)
-    RegisterVariable<channelblock_t>(d2, Form("channel%d", i), &ch_block[i],
+  { // book the event-wise block
+    RegisterVariable<eventblock_t>(d2, "event", &ev_block,
+      "timestamp/l:event_num/I:"
+      "time[64]/F:"
       "num_samples/I:"
-      "ampl[10][64]/F:"
-      "max_ampl[10]/F");
+      "channel_id[100]/I:"
+      "fpga_timestamp[100]/I");
+  }
+  std::vector<channelblock_t> ch_block(num_channels);
+  { // book the channels-wise blocks
+    size_t i = 0;
+    for (auto& ch : ch_block) {
+      ch.num_samples = 0;
+      RegisterVariable<channelblock_t>(d2, Form("ch%d", i++), &ch,
+        "num_samples/I:"
+        "ampl[10][64]/F:"
+        "max_ampl[10]/F");
+    }
+  }
 
+  // fill the blocks
   ev_block.timestamp = event->header().sf2Timestamp();
   ev_block.event_num = event->header().eventNumber();
   for (uint16_t i = 0; i < event->header().sampleNumber(); ++i)
     ev_block.time[i] = i*sampic::kSamplingPeriod;
 
-  std::cout << "ev = " << d1->GetEventN() << " at " << ev_block.timestamp << std::endl;
-
-  //event->Print(std::cout);
-  //std::cout << "id=" << (int)event->header().boardId() << std::endl;
   for (const auto& smp : *event) {
     const auto& sampic_info = smp.sampic;
-    //const unsigned short ch_id = smp.header.channelIndex();
-    const unsigned short ch_id = event->header().boardId()*16+sampic_info.header.channelIndex(); //FIXME use previous
+    const unsigned short ch_id = smp.header.channelIndex();
     ev_block.channel_id[ev_block.num_samples] = ch_id;
     ev_block.fpga_timestamp[ev_block.num_samples] = sampic_info.header.fpgaTimestamp();
-    const float baseline = std::accumulate(
-      sampic_info.samples.begin(), std::next(sampic_info.samples.begin(), num_baseline-1), 0.)/(num_baseline-1);
+    const auto& samples = sampic_info.samples();
+    const float baseline = 1./(num_baseline-1)*std::accumulate(
+      samples.begin(),
+      std::next(samples.begin(), num_baseline-1),
+      0.);
     uint16_t i = 0;
-    for (const auto& s : sampic_info.samples) {
-      ch_block[ch_id].ampl[ev_block.num_samples][i] = (float)s-baseline;
-      if (s < ch_block[ch_id].max_ampl[ev_block.num_samples])
-        ch_block[ch_id].max_ampl[ev_block.num_samples] = (float)s;
+    auto& num_ch_samples = ch_block[ch_id].num_samples;
+    for (const auto& s_val : samples) {
+      ch_block[ch_id].ampl[num_ch_samples][i] = s_val-baseline;
+      if (s_val < ch_block[ch_id].max_ampl[num_ch_samples])
+        ch_block[ch_id].max_ampl[num_ch_samples] = s_val;
       ++i;
     }
-    ch_block[ch_id].max_ampl[ev_block.num_samples] -= baseline;
-    ch_block[ch_id].num_samples++;
+    ch_block[ch_id].max_ampl[num_ch_samples] -= baseline;
+    num_ch_samples++;
     ev_block.num_samples++;
   }
   d2->Fill();

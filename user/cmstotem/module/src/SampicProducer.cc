@@ -175,6 +175,8 @@ void SampicProducer::RunLoop(){
             ev = eudaq::Event::MakeUnique("SampicRaw");
             ev->SetTriggerN(header.triggerNumber);
             ev->SetEventN(header.eventNumber);
+            if (ev->IsBORE())
+              std::cout << "BOREEEEEEE!!" << std::endl;
             if (m_flag_ts) {
               auto tp_trigger = std::chrono::steady_clock::now();
               std::chrono::nanoseconds du_ts_beg_ns(tp_trigger - tp_start_run);
