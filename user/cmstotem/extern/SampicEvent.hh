@@ -29,6 +29,13 @@ namespace eudaq {
     static SampicEventSP MakeShared();
     static const uint32_t m_id_factory = cstr2hash("SampicEvent");
 
+    static const std::array<float,64> TIME_SAMPLES() {
+      static std::array<float,64> out;
+      for (uint16_t i = 0; i < out.size(); ++i)
+        out[i] = i*sampic::kSamplingPeriod;
+      return out;
+    }
+
   private:
     sampic::EventHeader m_header;
     std::vector<sampic::ChannelStream<64> > m_ch_stream;
