@@ -6,8 +6,12 @@
 #include <thread>
 #include <random>
 #include <array>
-#ifndef _WIN32
-#include <sys/file.h>
+#if defined(_WIN32) || defined(WINDOWS)
+# include <direct.h>
+# define getcwd _getcwd
+#else
+# include <sys/file.h>
+# include <unistd.h>
 #endif
 
 #include "sampicdaq/menus.h"
@@ -63,6 +67,10 @@ void SampicProducer::DoInitialise(){
   //--- find the QuickUSB interface
   if (!qusb_find_modules())
     EUDAQ_THROW("No QuickUSB modules found!");
+
+  char path[FILENAME_MAX];
+  getcwd(path, FILENAME_MAX);
+  EUDAQ_INFO("Working path: "+std::string(path));
 
   LoadConfiguration(ini_card_path);
   EUDAQ_INFO("Successfully initialised the module using \""+ini_card_path+"\".");
@@ -134,7 +142,7 @@ void SampicProducer::RunLoop(){
   std::array<int,512> event_sizes;
 
   while (!m_exit_of_run) {
-    if (m_max_events > 0 && m_num_events == m_max_events) { //FIXME
+    if (m_max_events > 0 && m_num_events == m_max_events) {
       EUDAQ_INFO("Maximum number of "+std::to_string(m_num_events)+" event(s) reached.");
       return;
     }

@@ -28,7 +28,7 @@ SF2  set_samp_trg_source Disabled ret
 SF2  set_aL1A_Freq 100_HZ ret
 Sf2  Set_DAQ_mode qusb_direct ret
 Sf2  Set_L1A_Latency 4 ret
-Sf2  Set_nb_of_samples 64
+Sf2  Set_nb_of_samples 64 ret
 
 SF2  read_conf ret
 
@@ -153,6 +153,7 @@ acquisition  datapath ./ ret
 !@run
 
 @../conf/config_channels
+message "Finished configuring channels"
 
 return
 
