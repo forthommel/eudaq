@@ -21,7 +21,7 @@ private:
   };
   struct channelblock_t {
     int num_samples = 0;
-    float ampl[10][64] = {0.};
+    float ampl[10][64] = {{0.}};
     float max_ampl[10] = {10.};
   };
 };
