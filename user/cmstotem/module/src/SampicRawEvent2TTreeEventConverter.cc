@@ -67,7 +67,7 @@ bool SampicRawEvent2TTreeEventConverter::Converting(eudaq::EventSPC d1, eudaq::T
     size_t i = 0;
     for (auto& ch : ch_block) {
       ch.num_samples = 0;
-      RegisterVariable<channelblock_t>(d2, Form("ch%d", i++), &ch,
+      RegisterVariable<channelblock_t>(d2, Form("ch%zu", i++), &ch,
         "num_samples/I:"
         "ampl[10][64]/F:"
         "max_ampl[10]/F");
@@ -80,6 +80,7 @@ bool SampicRawEvent2TTreeEventConverter::Converting(eudaq::EventSPC d1, eudaq::T
   for (uint16_t i = 0; i < event->header().sampleNumber(); ++i)
     ev_block.time[i] = i*sampic::kSamplingPeriod;
 
+  event->Print(std::cout);
   for (const auto& smp : *event) {
     const auto& sampic_info = smp.sampic;
     const unsigned short ch_id = smp.header.channelIndex();
@@ -102,6 +103,5 @@ bool SampicRawEvent2TTreeEventConverter::Converting(eudaq::EventSPC d1, eudaq::T
     num_ch_samples++;
     ev_block.num_samples++;
   }
-  d2->Fill();
   return true;
 }
