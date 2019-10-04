@@ -1,3 +1,4 @@
+include_directories(${EUDAQ_INCLUDE_DIRS})
 include_directories(include)
 aux_source_directory(src MODULE_SRC)
 aux_source_directory(../extern EXTERN_SRC)
@@ -6,25 +7,15 @@ set(EXT_LIBS)
 set(EXT_INCS)
 
 if(NOT EUDAQ_TTREE_LIBRARY)
-  list(REMOVE_ITEM MODULE_SRC src/SampicMonitor.cc)
   list(REMOVE_ITEM MODULE_SRC src/SampicRawEvent2TTreeEventConverter.cc)
-  list(REMOVE_ITEM EXTERN_SRC ../extern/MonitorWindow.cc)
 else()
-  list(APPEND CMAKE_PREFIX_PATH $ENV{ROOTSYS})
-  find_package(ROOT REQUIRED COMPONENTS Gui)
-  set(THISMON MonitorWindow)
-  set(THISMON_DICT_CXX ${CMAKE_CURRENT_BINARY_DIR}/${THISMON}_ROOT.cxx)
-  root_generate_dictionary(${THISMON}_ROOT ../extern/MonitorWindow.hh)
-  list(APPEND EXTERN_SRC ${THISMON_DICT_CXX})
-  if(ROOT_VERSION_MAJOR GREATER 5)
-    set(ROOTProducer_PCM ${CMAKE_CURRENT_BINARY_DIR}/${THISMON}_ROOT_rdict.pcm)
-    set(ROOTProducer_MAP ${CMAKE_CURRENT_BINARY_DIR}/${THISMON}_ROOT.rootmap)
-    install(FILES
-      ${ROOTProducer_PCM}
-      ${ROOTProducer_MAP}
-      DESTINATION lib)
-  endif()
   list(APPEND EXT_LIBS ${ROOT_LIBRARIES} ${EUDAQ_TTREE_LIBRARY})
+endif()
+
+if(NOT EUDAQ_ROOT_MONITOR)
+  list(REMOVE_ITEM MODULE_SRC src/SampicMonitor.cc)
+else()
+  list(APPEND EXT_LIBS ${ROOT_LIBRARIES} ${EUDAQ_ROOT_MONITOR})
 endif()
 
 # specific linking for the Sampic manipulation
@@ -56,7 +47,6 @@ else()
   list(APPEND EXT_INCS ${QUICKUSB_PATH})
 endif()
 
-message(STATUS ">>> ${MODULE_SRC}")
 include_directories(../extern)
 add_library(${EUDAQ_MODULE} SHARED ${MODULE_SRC} ${EXTERN_SRC})
 target_link_libraries(${EUDAQ_MODULE} ${EUDAQ_CORE_LIBRARY} ${EXT_LIBS})
