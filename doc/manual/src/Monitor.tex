@@ -18,3 +18,25 @@ and gnuplot can be the possible graphic library.
 \subsubsection{StdEventMonitor}
 StdEventMonitor is an EUDAQ version 1 legacy. It was named as OnlineMonitor. Actually, it can only display the plots from StandardEvent. If the Converter to StandardEvent of the incoming Event exists, StdEventMonitor will call the correlated Converter and do the converting itself.
 StdEventMonitor depends ROOT to generate and plot graph.
+
+\subsubsection{Generic ROOT monitor}
+For projects requiring the online monitoring of a limited amount of specific quantities a ROOT-based visualisation system may be used as a base class.
+A limited set of virtual and pure virtual methods are required to define a monitor, as listed below.
+
+\lstinputlisting[label=ls:rootmondef, style=cpp, linerange=BEG*DEC-END*DEC]{../../monitors/rootmonitor/include/eudaq/ROOTMonitor.hh}
+
+The online monitoring analysis code may therefore be implemented inside the derivative object's \lstinline[style=cpp]{AtEventReception(eudaq::EventSP ev)} method, while all histograms booking and registration are performed either within the \lstinline[style=cpp]{AtInitialisation()} or in the \lstinline[style=cpp]{AtConfiguration()} member.
+
+For this latter stage, a templated method is provided to book, both in runtime memory and in the collection of monitoring plots handled by the graphical interface, any \lstinline[style=cpp]{TObject}-derivative ROOT container.
+It may be invoked with the help from \lstinline[style=cpp]{eudaq::ROOTMonitor}'s \lstinline[style=cpp]{m_monitor} protected member defining the graphical part of the tool.
+For instance, a one-dimensional histogram and a two-dimensional graphics object may be booked through:
+
+\begin{lstlisting}[style=cpp]
+TH1D* m_my_hist = m_monitor->Book<TH1D>("path/to/the/monitor", "Sample histogram", "h_my_hist", "My histogram;My variable;Entries", 100, 0., 1.);
+TGraph* m_my_graph = m_monitor->Book<TGraph>("path/to/the/graph", "Sample graph");
+\end{lstlisting}
+
+In this scheme, the first two \lstinline[style=cpp]{Book} arguments are referring to the absolute path to the object within the monitoring window, and its human-readable name. The following argument(s) (if any) is/are directly fed to the templated object's constructor.
+This method returns the memory address to the newly created object (no destruction required, as it will be handled internally), preferably to be used as a derivative monitoring object's private attributes.
+
+Obviously, the only dependency required to build this intermediate object is ROOT.

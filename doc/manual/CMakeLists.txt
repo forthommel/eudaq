@@ -19,7 +19,7 @@ IF(LATEX_FOUND)
   INCLUDE(${PROJECT_SOURCE_DIR}/cmake/UseLATEX.cmake)
 
   #message(ERROR ${CMAKE_SOURCE_DIR})
-  
+
   ADD_LATEX_DOCUMENT(
     src/EUDAQUserManual.tex
     INPUTS
@@ -41,7 +41,7 @@ IF(LATEX_FOUND)
     src/Contributing.tex
     src/PlatformIssue.tex
     src/TTreeConverter.tex
-    ../../main/lib/core/include/eudaq/Producer.hh  
+    ../../main/lib/core/include/eudaq/Producer.hh
     ../../main/lib/core/include/eudaq/DataCollector.hh
     ../../main/lib/core/include/eudaq/Monitor.hh
     ../../main/lib/core/include/eudaq/RunControl.hh
@@ -49,6 +49,7 @@ IF(LATEX_FOUND)
     ../../main/lib/core/include/eudaq/FileReader.hh
     ../../main/lib/core/src/NativeFileWriter.cc
     ../../main/lib/core/src/NativeFileReader.cc
+    ../../monitors/rootmonitor/include/eudaq/ROOTMonitor.hh
     ../../user/example/module/src/Ex0Producer.cc
     ../../user/example/module/src/Ex0RunControl.cc
     ../../user/example/module/src/Ex0Monitor.cc
@@ -60,7 +61,7 @@ IF(LATEX_FOUND)
     ../../user/example/misc/Ex0.ini
     ../../user/example/misc/Ex0.conf
     ../../user/eudet/module/src/DirectSaveDataCollector.cc
-    
+
     BIBFILES src/References.bib
     USE_GLOSSARY
     IMAGE_DIRS src/images
@@ -68,7 +69,7 @@ IF(LATEX_FOUND)
     )
 
   # overwrite the version info tex file with information from CMake/git
-  CONFIGURE_FILE("${PROJECT_SOURCE_DIR}/cmake/version.cmake.tex" 
+  CONFIGURE_FILE("${PROJECT_SOURCE_DIR}/cmake/version.cmake.tex"
     "${CMAKE_CURRENT_BINARY_DIR}/src/version.tex" @ONLY)
 
   INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/EUDAQUserManual.pdf

@@ -16,12 +16,14 @@ namespace eudaq {
     void DoReset() override;
     void DoReceive(eudaq::EventSP ev) override;
 
+    //----------DOC-MARK-----BEG*DEC-----DOC-MARK----------
     virtual void AtInitialisation() {}
     virtual void AtConfiguration() {}
     virtual void AtRunStart() {}
     virtual void AtRunStop() {}
     virtual void AtEventReception(eudaq::EventSP ev) = 0;
     virtual void AtReset() {}
+    //----------DOC-MARK-----END*DEC-----DOC-MARK----------
 
   protected:
     std::unique_ptr<ROOTMonitorWindow> m_monitor;
