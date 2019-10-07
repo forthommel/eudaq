@@ -103,6 +103,7 @@ public:
   void SwitchClearRuns(bool);
   /// Clean up everything before terminating the application
   void Quit();
+  void FillFromRAWFile(const char* path);
 
 private:
   /// List of status bar attributes

@@ -186,9 +186,8 @@ void ROOTMonitorWindow::LoadFile(const char* filename){
   s_ext.ToLower();
   if (s_ext == "root")
     FillFileObject("", TFile::Open(filename, "read"), "");
-  else if (s_ext == "raw") {
-    std::cout << s_ext << std::endl;
-  }
+  else if (s_ext == "raw")
+    FillFromRAWFile(filename);
   Update();
 }
 
@@ -205,6 +204,11 @@ void ROOTMonitorWindow::FillFileObject(const std::string& path, TObject* obj, co
     Book<TGraph>(full_path, path, *(TGraph*)obj);
   else if (!path.empty())
     std::cerr << "Failed to load a specific object: " << path << std::endl;
+}
+
+void ROOTMonitorWindow::FillFromRAWFile(const char* path){
+  std::cout << "Will load \"" << path << "\"." << std::endl;
+  Emit("FillFromRAWFile(const char*)", path);
 }
 
 void ROOTMonitorWindow::SaveFileDialog(){

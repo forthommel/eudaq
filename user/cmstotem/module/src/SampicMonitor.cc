@@ -60,10 +60,12 @@ SampicMonitor::SampicMonitor(const std::string & name, const std::string & runco
 
 void SampicMonitor::AtConfiguration(){
   auto conf = GetConfiguration();
-  m_en_print = conf->Get("SAMPIC_ENABLE_PRINT", 1);
-  m_plane_tel_tomo = conf->Get("EUTEL_PLANE_TOMO", 0);
-  m_sampic_num_baseline = conf->Get("SAMPIC_NUM_BASELINE", 10);
-  m_sampic_sampling_period = conf->Get("SAMPIC_SAMPLING_PERIOD", 1./120.e6);
+  if (conf) {
+    m_en_print = conf->Get("SAMPIC_ENABLE_PRINT", 1);
+    m_plane_tel_tomo = conf->Get("EUTEL_PLANE_TOMO", 0);
+    m_sampic_num_baseline = conf->Get("SAMPIC_NUM_BASELINE", 10);
+    m_sampic_sampling_period = conf->Get("SAMPIC_SAMPLING_PERIOD", 1./120.e6);
+  }
 
   // book all monitoring elements
   m_g_trg_time = m_monitor->Book<TGraph>("trig_vs_time", "Trigger time");
@@ -95,7 +97,6 @@ void SampicMonitor::AtConfiguration(){
   }
   for (size_t i = 0; i < kNumCh; ++i) {
     const unsigned short board_id = i/16; // 16 channels per board
-    std::cout << "--> " << board_id << "/" << i << std::endl;
     m_monitor->AddSummary(Form("Summary/Board %u/Maximum amplitude", board_id), m_h_maxamp_per_chan[i]);
     m_monitor->AddSummary(Form("Summary/Board %u/SN ratio", board_id), m_h_snratio[i]);
     m_monitor->AddSummary(Form("Summary/Board %u/Tomography", board_id), m_h2_tel_tomo[i]);
