@@ -39,6 +39,9 @@ TGraph* m_my_graph = m_monitor->Book<TGraph>("path/to/the/graph", "Sample graph"
 In this scheme, the first two \lstinline[style=cpp]{Book} arguments are referring to the absolute path to the object within the monitoring window, and its human-readable name. The following argument(s) (if any) is/are directly fed to the templated object's constructor.
 This method returns the memory address to the newly created object (no destruction required, as it will be handled internally), preferably to be used as a derivative monitoring object's private attributes.
 These objects may then be personalised according to user's need (e.g. plotting colours, markers style, \ldots).
-The drawing style (arguments to the \lstinline[style=cpp]{TObject::Draw(...)} method at each call) and fixed vertical axis range may be specified through the \lstinline[style=cpp]{void SetDrawOptions(TObject* obj, Option_t opt)} and \lstinline[style=cpp]{void SetRangeY(TObject* obj, double min, double max)} methods (resp.) of the \lstinline[style=cpp]{m_monitor} object.
+
+The drawing style (arguments to the \lstinline[style=cpp]{TObject::Draw(...)} method at each call) and fixed vertical axis range may be specified through the \lstinline[style=cpp]{void SetDrawOptions(const TObject* obj, Option_t opt)} and \lstinline[style=cpp]{void SetRangeY(const TObject* obj, double min, double max)} methods (resp.) of the \lstinline[style=cpp]{m_monitor} object.
+Furthermore, the persistency of each monitor may also be enabled/disabled through the \lstinline[style=cpp]{void SetPersistant(const TObject*, bool pers)} method of this latter.
+By default, all newly-created plots are persistant (i.e. accumulative, and reset only at run start when required).
 
 Obviously, the only dependency required to build this intermediate object is ROOT.
