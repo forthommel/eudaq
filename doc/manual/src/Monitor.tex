@@ -7,7 +7,7 @@ eudaq::Monitor provides the the base class and common methods to monitor the dat
 \lstinputlisting[label=ls:monitordef, style=cpp, linerange=BEG*DEC-END*DEC]{../../main/lib/core/include/eudaq/Monitor.hh}
 
 \subsection{Example Code}
-Here is an example code of a derived Monitor, named Ex0Monitor. It gets configration paratmeter at configration time and do print out the infomation of the received Events. It might do an Event converting depending on how it is configured.
+Here is an example code of a derived Monitor, named Ex0Monitor. It gets configuration parameter at configuration time and do print out the information of the received Events. It might do an Event converting depending on how it is configured.
 \lstinputlisting[label=ls:ex0monitorcc, style=cpp]{../../user/example/module/src/Ex0Monitor.cc}
 Two virtual methods are implemented in Ex0Monitor, \lstinline[style=cpp]{DoConfigure()} and \lstinline[style=cpp]{DoReceive(eudaq::EventUP ev)}. It registers itself to the correlated \lstinline[style=cpp]{eudaq::factory} by the hash number from the name string \lstinline[style=cpp]{Ex0Monitor}.
 
@@ -38,5 +38,7 @@ TGraph* m_my_graph = m_monitor->Book<TGraph>("path/to/the/graph", "Sample graph"
 
 In this scheme, the first two \lstinline[style=cpp]{Book} arguments are referring to the absolute path to the object within the monitoring window, and its human-readable name. The following argument(s) (if any) is/are directly fed to the templated object's constructor.
 This method returns the memory address to the newly created object (no destruction required, as it will be handled internally), preferably to be used as a derivative monitoring object's private attributes.
+These objects may then be personalised according to user's need (e.g. plotting colours, markers style, \ldots).
+The drawing style (arguments to the \lstinline[style=cpp]{TObject::Draw(...)} method at each call) and fixed vertical axis range may be specified through the \lstinline[style=cpp]{void SetDrawOptions(TObject* obj, Option_t opt)} and \lstinline[style=cpp]{void SetRangeY(TObject* obj, double min, double max)} methods (resp.) of the \lstinline[style=cpp]{m_monitor} object.
 
 Obviously, the only dependency required to build this intermediate object is ROOT.
