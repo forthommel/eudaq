@@ -64,14 +64,10 @@ public:
     auto it_icon = m_obj_icon.find(obj->ClassName());
     if (it_icon != m_obj_icon.end())
       item->SetPictures(it_icon->second, it_icon->second);
-#if (__cplusplus == 201703L || __cplusplus == 201402L)
-    m_objects[path] = MonitoredObject{item, obj, true, std::make_pair(kInvalidValue, kInvalidValue), "", ""};
-#else
     MonitoredObject mon;
     mon.item = item;
     mon.object = obj;
     m_objects[path] = mon;
-#endif
     m_left_canv->MapSubwindows();
     m_left_canv->MapWindow();
     return obj;
@@ -87,7 +83,10 @@ public:
   /// Specify the drawing properties of the object in the monitor
   void SetDrawOptions(const TObject* obj, Option_t* opt) { GetMonitor(obj).draw_opt = opt; }
   /// Specify the y axis range for a monitored object
-  void SetRangeY(const TObject* obj, double min, double max) { GetMonitor(obj).y_range = std::make_pair(min, max); }
+  void SetRangeY(const TObject* obj, double min, double max) {
+    auto& mon = GetMonitor(obj);
+    mon.min_y = min, mon.max_y = max;
+  }
   /// Specify if the x-axis should be associated with time
   void SetTimeSeries(const TObject* obj, const std::string& time) { GetMonitor(obj).time_series = time; }
 
@@ -108,22 +107,11 @@ public:
   void FillFromRAWFile(const char* path);
 
 private:
-  static constexpr double kInvalidValue = 42.424242;
-  struct MonitoredObject {
-    TGListTreeItem* item = nullptr;
-    TObject* object = nullptr;
-    bool persist = true;
-    std::pair<double,double> y_range = std::make_pair(kInvalidValue, kInvalidValue);
-    std::string time_series = "";
-    Option_t* draw_opt = "";
-  };
-
   /// List of status bar attributes
   enum class StatusBarPos { status = 0, run_number, tot_events, an_events, num_parts };
   TGListTreeItem* BookStructure(const std::string& path, TGListTreeItem* par = nullptr);
   void CleanObject(TObject*);
   void FillFileObject(const std::string& path, TObject* obj, const std::string& path_par = "");
-  MonitoredObject& GetMonitor(const TObject* obj);
   void Draw(TCanvas* canv);
   void PostDraw(TCanvas* canv);
 
@@ -145,6 +133,18 @@ private:
 
   /// Timer for auto-refresh loop
   std::unique_ptr<TTimer> m_timer;
+  static constexpr double kInvalidValue = 42.424242;
+  struct MonitoredObject {
+    TGListTreeItem* item = nullptr;
+    TObject* object = nullptr;
+    bool persist = true;
+    double min_y = kInvalidValue, max_y = kInvalidValue;
+    std::string time_series = "";
+    Option_t* draw_opt = "";
+  };
+
+  MonitoredObject& GetMonitor(const TObject* obj);
+
   /// List of all objects handled and monitored
   std::map<std::string, MonitoredObject> m_objects;
   std::map<std::string, TGListTreeItem*> m_dirs;
