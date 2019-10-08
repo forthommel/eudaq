@@ -24,7 +24,7 @@ private:
   // configuration flags
   bool m_en_print = false;
   int m_sampic_num_baseline = 10;
-  double m_sampic_sampling_period = 0.;
+  double m_sampic_sampling_period = 1./120.e6;
   unsigned short m_plane_tel_tomo = 0;
 
   // some board constants
