@@ -70,10 +70,8 @@ void SampicMonitor::AtConfiguration(){
   // book all monitoring elements
   m_g_trg_time = m_monitor->Book<TGraph>("trig_vs_time", "Trigger time");
   m_g_trg_time->SetTitle("Trigger time;Time (s);Trigger number");
-  m_monitor->SetTimeSeries(m_g_trg_time, "%H:%M:%S");
   m_g_evt_time = m_monitor->Book<TGraph>("event_vs_time", "Event time");
   m_g_evt_time->SetTitle("Event time;Time (s);Event number");
-  m_monitor->SetTimeSeries(m_g_evt_time, "%H:%M:%S");
   m_g_trg_evt = m_monitor->Book<TGraph>("trig_vs_event", "Event vs. trigger number");
   m_g_trg_evt->SetTitle(";Event number;Trigger number");
   m_h_occup_allchan = m_monitor->Book<TH1D>("channels_occup", "Occupancy, all channels", "ch_occup", "Channels occupancy;Channel number;Entries", kNumCh, 0., kNumCh);
