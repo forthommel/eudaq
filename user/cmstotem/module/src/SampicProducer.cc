@@ -138,8 +138,9 @@ void SampicProducer::DoTerminate(){
 void SampicProducer::RunLoop(){
   auto tp_start_run = std::chrono::steady_clock::now();
   std::map<unsigned int,eudaq::EventUP> map_events;
-  std::array<SampicEvent_t,512> events;
-  std::array<int,512> event_sizes;
+  static const size_t max_evts = 16*1024;
+  std::array<SampicEvent_t,max_evts> events;
+  std::array<int,max_evts> event_sizes;
 
   while (!m_exit_of_run) {
     if (m_max_events > 0 && m_num_events == m_max_events) {
@@ -154,9 +155,9 @@ void SampicProducer::RunLoop(){
         EUDAQ_THROW("Acquisition failed with code "+std::to_string(num_bytes));
       if (num_bytes == 0)
         continue;
-      if (num_bytes > m_buffer_size) {
+      if (num_bytes > max_evts) {
         EUDAQ_ERROR("Buffer overflown! ("+std::to_string(num_bytes)+" > max_bytes="
-                   +std::to_string(m_buffer_size)+")");
+                   +std::to_string(max_evts)+")");
         continue;
       }
 
@@ -183,8 +184,6 @@ void SampicProducer::RunLoop(){
             ev = eudaq::Event::MakeUnique("SampicRaw");
             ev->SetTriggerN(header.triggerNumber);
             ev->SetEventN(header.eventNumber);
-            if (ev->IsBORE())
-              std::cout << "BOREEEEEEE!!" << std::endl;
             if (m_flag_ts) {
               auto tp_trigger = std::chrono::steady_clock::now();
               std::chrono::nanoseconds du_ts_beg_ns(tp_trigger - tp_start_run);
@@ -195,7 +194,7 @@ void SampicProducer::RunLoop(){
           it += event_sizes.at(i);
         }
         if (std::distance(m_buffer.begin(), it) != num_bytes)
-          EUDAQ_THROW("Invalid number of frames retrieved!"
+          EUDAQ_WARN("Invalid number of frames retrieved!"
                      +std::to_string(std::distance(m_buffer.begin(), it))
                      +"/"+std::to_string(num_bytes));
       }
