@@ -17,17 +17,23 @@ SampicEventSP SampicEvent::MakeShared(){
 SampicEvent::SampicEvent()
 {
   SetType(m_id_factory);
+  /*if (NumPlanes() < 1)
+    AddPlane(m_plane);*/
 }
 
 SampicEvent::SampicEvent(const Event& ev)
 {
   SetType(m_id_factory);
+  /*if (NumPlanes() < 1)
+    AddPlane(m_plane);*/
   for (auto& block_n: ev.GetBlockNumList())
     ConvertBlock(ev.GetBlock(block_n));
 }
 
 SampicEvent::SampicEvent(const SampicEvent& ev)
-  :m_header(ev.m_header), m_ch_stream(ev.m_ch_stream), m_trailer(ev.m_trailer){
+  :m_header(ev.m_header), m_ch_stream(ev.m_ch_stream), m_trailer(ev.m_trailer), m_plane(ev.m_plane){
+  /*if (NumPlanes() < 1)
+    AddPlane(m_plane);*/
 }
 
 SampicEvent::SampicEvent(Deserializer& ds) :

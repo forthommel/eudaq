@@ -1,11 +1,11 @@
 #include "eudaq/TTreeEventConverter.hh"
 
 namespace eudaq{
-
+  
   template DLLEXPORT
   std::map<uint32_t, typename Factory<TTreeEventConverter>::UP(*)()>&
   Factory<TTreeEventConverter>::Instance<>();
-
+  
   bool TTreeEventConverter::Convert(EventSPC d1, TTreeEventSP d2, ConfigurationSPC conf){
 
     if(d1->IsFlagFake()){
@@ -68,7 +68,9 @@ namespace eudaq{
     uint32_t id = d1->GetType();
     auto cvt = Factory<TTreeEventConverter>::MakeUnique(id);
     if(cvt){
-      return cvt->Converting(d1, d2, conf);
+      cvt->Converting(d1, d2, conf);
+      d2->Fill();
+      return true;
     }
     else{
       std::cerr<<"TTreeEventConverter: WARNING, no converter for EventID = "<<d1<<"\n";
