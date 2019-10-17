@@ -26,7 +26,7 @@ set (TTREE_LIBRARIES ${TTREE_LIBRARIES} CACHE INTERNAL "external ttree library")
     ${CMAKE_CURRENT_LIST_DIR}/include
     ${ROOT_INCLUDE_DIRS}
     CACHE INTERNAL "directory of eudaq include")
-include_directories(${EUDAQ_INCLUDE_DIRS})	
+include_directories(${EUDAQ_INCLUDE_DIRS})
 include_directories(${ROOT_INCLUDE_DIR})
 
 if(ROOT_USE_FILE)
@@ -37,6 +37,15 @@ include_directories(. include)
 include_directories(${CMAKE_BINARY_DIR})
 
 aux_source_directory(src EUDAQ_COMPONENT_SRC)
+
+if(NOT EUDAQ_BUILD_ONLINE_ROOT_MONITOR)
+  list(REMOVE_ITEM EUDAQ_COMPONENT_SRC src/TTreeEventMonitor.cc)
+else()
+  include_directories(${CMAKE_SOURCE_DIR}/monitors/rootmonitor/include)
+  set(ROOT_LIBRARIES
+    ${ROOT_LIBRARIES}
+    ${EUDAQ_ROOT_MONITOR})
+endif()
 
 add_library(${EUDAQ_COMPONENT} SHARED ${EUDAQ_COMPONENT_SRC})
 
