@@ -70,7 +70,12 @@ namespace eudaq{
     if(cvt){
       if (!cvt->Converting(d1, d2, conf))
         return false;
-      return (d2->Fill() >= 0); // allows debugging for invalid branches filling
+      int fill_res = d2->Fill();
+      if (fill_res < 0) {
+        std::cerr << "TTreeEventConverter: WARNING, tree filling returned " << fill_res << ".\n";
+        return false;
+      }
+      return true;
     }
     else{
       std::cerr<<"TTreeEventConverter: WARNING, no converter for EventID = "<<d1<<"\n";
