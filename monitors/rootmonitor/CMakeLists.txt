@@ -35,6 +35,13 @@ include_directories(${CMAKE_BINARY_DIR})
 
 aux_source_directory(src EUDAQ_COMPONENT_SRC)
 
+set(EXT_LIBS ${EUDAQ_CORE_LIBRARY} ${EUDAQ_THREADS_LIB} ${ROOT_LIBRARIES})
+if(NOT EUDAQ_TTREE_LIBRARY)
+  list(REMOVE_ITEM EUDAQ_COMPONENT_SRC src/TTreeEventMonitor.cc)
+else()
+  list(APPEND EXT_LIBS ${EUDAQ_TTREE_LIBRARY})
+endif()
+
 root_generate_dictionary(R_ROOTMonitor eudaq/ROOTMonitor.hh eudaq/ROOTMonitorWindow.hh LINKDEF include/LinkDef.h)
 list(APPEND EUDAQ_COMPONENT_SRC ${CMAKE_CURRENT_BINARY_DIR}/R_ROOTMonitor.cxx)
 add_library(${EUDAQ_COMPONENT} SHARED ${EUDAQ_COMPONENT_SRC})
@@ -43,7 +50,7 @@ if(CMAKE_COMPILER_IS_GNUCC AND (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 6.0))
   set_property(TARGET ${EUDAQ_COMPONENT} PROPERTY CXX_STANDARD 14)
 endif()
 
-target_link_libraries(${EUDAQ_COMPONENT} ${EUDAQ_CORE_LIBRARY} ${EUDAQ_THREADS_LIB} ${ROOT_LIBRARIES})
+target_link_libraries(${EUDAQ_COMPONENT} ${EXT_LIBS})
 
 install(TARGETS ${EUDAQ_COMPONENT}
   EXPORT eudaqTargets
