@@ -40,7 +40,7 @@ void TTreeEventMonitor::AtConfiguration(){
 void TTreeEventMonitor::AtEventReception(eudaq::EventSP ev){
   if (m_en_print)
     ev->Print(std::cout);
-  auto ttev = std::make_shared<TTree>();
+  auto ttev = std::make_shared<eudaq::TTreeEvent>();
   eudaq::TTreeEventConverter::Convert(ev, ttev, GetConfiguration());
 }
 
