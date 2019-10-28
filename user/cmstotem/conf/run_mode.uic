@@ -1,6 +1,4 @@
 
-
-
 SF2 set_samp_trg Disabled ret
 Sf2  Set_DAQ_mode qusb_builded ret
 
@@ -22,7 +20,8 @@ fea set_control_reg 0 31 ret !!! release sampic trigger <- asynch trigger enable
 
 sf2 set_op_mode acquisition ret
 
-SF2 set_samp_trg L1A_LHCClk ret
+SF2 set_samp_trg enabled ret
+!SF2 set_samp_trg L1A_LHCClk ret
 
 message "Ready for running"
 

@@ -71,29 +71,26 @@ FEA read_status 1 ret
 !!!!            DAC init           !!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+DAC Set_Rosc    0 1.1 ret
+DAC Set_StartRamp 0 0.0 ret
+DAC Set_ExtThr    0 0.0 ret
+DAC Set_DLL     0 0.8 ret
+
+DAC Set_Baseline  0 0.9   ret  !!
+DAC Set_Ramp    0 0.0365   ret !! 11 bit
+DAC Set_Dacp    0 1.8   ret
+DAC Set_Dacm    0 0.0   ret
+
 
 DAC Set_Rosc    1 1.1 ret
 DAC Set_StartRamp 1 0.0 ret
 DAC Set_ExtThr    1 0.0 ret
 DAC Set_DLL     1 0.8 ret
 
-
-DAC Set_Baseline  1 0.5   ret  !!
-DAC Set_Ramp    1 0.035   ret !! 11 bit
+DAC Set_Baseline  1 0.9   ret  !!
+DAC Set_Ramp    1 0.0385   ret !! 11 bit
 DAC Set_Dacp    1 1.8   ret
 DAC Set_Dacm    1 0.0   ret
-
-
-DAC Set_Rosc    0 1.1 ret
-DAC Set_StartRamp 0 0.0 ret
-DAC Set_ExtThr    0 0.0 ret
-DAC Set_DLL     0 0.8 ret
-
-
-DAC Set_Baseline  0 0.5   ret  !!
-DAC Set_Ramp    0 0.035   ret !! 11 bit
-DAC Set_Dacp    0 1.8   ret
-DAC Set_Dacm    0 0.0   ret
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!         SAMPIC init           !!!!!
@@ -106,8 +103,8 @@ sampic conf1 disable_del_dll 0 FALSE ret ret
 sampic conf1 disable_del_clk 0 TRUE ret ret
 sampic conf1 dll_fast_mode 0 TRUE ret ret
 !!!!! disable smartread
+sampic conf1 offset_start_read 0 10 ret ret
 sampic conf1 smart_read 0 TRUE ret ret
-sampic conf1 offset_start_read 0 20 ret ret
 sampic conf1 write 0 ret ret
 
 sampic dll_reg set_vdac 0 1.0 ret ret
@@ -125,8 +122,8 @@ sampic conf1 trg_res_source 1 EOC ret ret
 sampic conf1 disable_del_dll 1 FALSE ret ret
 sampic conf1 disable_del_clk 1 TRUE ret ret
 sampic conf1 dll_fast_mode 1 TRUE ret ret
+sampic conf1 offset_start_read 1 10 ret ret
 sampic conf1 smart_read 1 TRUE ret ret
-sampic conf1 offset_start_read 1 20 ret ret
 sampic conf1 write 1 ret ret
 
 sampic dll_reg set_vdac 1 1.0 ret ret
@@ -153,7 +150,7 @@ acquisition  datapath ./ ret
 
 !@run
 
-@../conf/config_channels
+@/home/ppstimingtb/daq/eudaq/user/cmstotem/conf/config_channels
 message "Finished configuring channels"
 
 return
