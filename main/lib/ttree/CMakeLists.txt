@@ -44,7 +44,7 @@ else()
   include_directories(${CMAKE_SOURCE_DIR}/monitors/rootmonitor/include)
   set(ROOT_LIBRARIES
     ${ROOT_LIBRARIES}
-    ${EUDAQ_ROOT_MONITOR})
+    ${EUDAQ_ROOT_MONITOR_LIBRARY})
 endif()
 
 add_library(${EUDAQ_COMPONENT} SHARED ${EUDAQ_COMPONENT_SRC})
