@@ -2,6 +2,11 @@ include_directories(${EUDAQ_INCLUDE_DIRS})
 include_directories(include)
 aux_source_directory(src MODULE_SRC)
 
+find_package(SRS)
+if(NOT SRS_FOUND)
+  message(FATAL_ERROR "SRS readout library not found")
+endif()
+
 #if(NOT EUDAQ_LCIO_LIBRARY)
 #  list(REMOVE_ITEM MODULE_SRC src/AHCalRawEvent2LCEventConverter.cc)
 #endif()
