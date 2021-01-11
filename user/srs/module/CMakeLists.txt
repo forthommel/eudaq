@@ -6,6 +6,7 @@ find_package(SRS)
 if(NOT SRS_FOUND)
   message(FATAL_ERROR "SRS readout library not found")
 endif()
+include_directories(${SRS_INCLUDE_DIR})
 
 #if(NOT EUDAQ_LCIO_LIBRARY)
 #  list(REMOVE_ITEM MODULE_SRC src/AHCalRawEvent2LCEventConverter.cc)
@@ -17,7 +18,7 @@ if(NOT EUDAQ_TTREE_LIBRARY)
 endif()
 
 add_library(${EUDAQ_MODULE} SHARED ${MODULE_SRC})
-target_link_libraries(${EUDAQ_MODULE} ${EUDAQ_CORE_LIBRARY} ${EUDAQ_LCIO_LIBRARY} ${LCIO_LIBRARIES})
+target_link_libraries(${EUDAQ_MODULE} ${EUDAQ_CORE_LIBRARY} ${EUDAQ_LCIO_LIBRARY} ${LCIO_LIBRARIES} ${SRS_LIBRARY})
 
 install(TARGETS
   ${EUDAQ_MODULE}
