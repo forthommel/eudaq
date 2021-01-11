@@ -1,6 +1,8 @@
 #include "eudaq/Producer.hh"
 
+extern "C"{
 #include "srsLib.h"
+}
 
 #include <mutex>
 #include <map>
