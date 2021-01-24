@@ -7,14 +7,14 @@
 message(STATUS "Looking for SRS driver.")
 
 set(SRS_DIRS $ENV{SRS_DIR} ${SRS_DIR})
-find_path(SRS_INCLUDE_DIR NAMES "srsdriver/Config.h" PATHS "${SRS_DIRS}")
+find_path(SRS_INCLUDE_DIR NAMES "srsdriver/Config.h" PATHS ${SRS_DIRS} HINTS ${SRS_DIRS}/include)
 message(STATUS "srsdriver => ${SRS_INCLUDE_DIR}")
 if(SRS_INCLUDE_DIR)
    set(SRS_INC_FOUND TRUE)
    message(STATUS "Found SRS driver headers: ${SRS_INCLUDE_DIR}")
 endif()
 
-find_library(SRS_LIBRARY NAMES "libsrsdriver.so" HINTS "${SRS_DIRS} ${SRS_DIRS}/build")
+find_library(SRS_LIBRARY NAMES "libsrsdriver.so" HINTS ${SRS_DIRS} ${SRS_DIRS}/build)
 message(STATUS "libsrsdriver.so => ${SRS_LIBRARY}")
 if(SRS_LIBRARY)
    set(SRS_LIB_FOUND TRUE)
