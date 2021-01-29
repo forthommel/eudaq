@@ -5,6 +5,8 @@
 #include <set>
 
 #include "srsdriver/SlowControl.h"
+#include "srsdriver/Messenger.h"
+#include "srsdriver/Receiver.h"
 
 class SrsProducer:public eudaq::Producer{
 public:
@@ -46,7 +48,7 @@ void SrsProducer::DoInitialise(){
   std::string addr;
   srs::port_t port;
   for (const auto& ini_file : eudaq::split(in_scripts, ",")) {
-    const auto config = srs::SlowControl::parseCommands(ini_file, addr, port);
+    const auto config = srs::Messenger::parseCommands(ini_file, addr, port);
     srs::Messenger msg(addr, m_debug);
     msg.send(port, config);
   }
@@ -85,5 +87,6 @@ void SrsProducer::RunLoop(){
   std::map<unsigned int,eudaq::EventUP> map_events;
 
   while (!m_exit_of_run) {
+    m_srs->read(0);
   }
 }
