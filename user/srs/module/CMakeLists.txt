@@ -23,7 +23,7 @@ endif()
 add_library(${EUDAQ_MODULE} SHARED ${MODULE_SRC})
 target_include_directories(${EUDAQ_MODULE} PRIVATE ${SRS_INCLUDE_DIR})
 target_link_libraries(${EUDAQ_MODULE} ${SRS_LIBRARY})
-target_link_libraries(${EUDAQ_MODULE} ${EUDAQ_CORE_LIBRARY} ${EUDAQ_LCIO_LIBRARY} ${LCIO_LIBRARIES})
+target_link_libraries(${EUDAQ_MODULE} ${EUDAQ_CORE_LIBRARY} ${EUDAQ_LCIO_LIBRARY} ${LCIO_LIBRARIES} ${EUDAQ_ROOT_MONITOR_LIBRARY})
 
 install(TARGETS
   ${EUDAQ_MODULE}
