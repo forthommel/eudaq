@@ -16,6 +16,10 @@ if(NOT EUDAQ_TTREE_LIBRARY)
   #list(REMOVE_ITEM MODULE_SRC src/AHCALRawEvent2TTreeEventConverter.cc)
 endif()
 
+if(NOT EUDAQ_BUILD_ONLINE_ROOT_MONITOR)
+  list(REMOVE_ITEM MODULE_SRC src/SrsMonitor.cc)
+endif()
+
 add_library(${EUDAQ_MODULE} SHARED ${MODULE_SRC})
 target_include_directories(${EUDAQ_MODULE} PRIVATE ${SRS_INCLUDE_DIR})
 target_link_libraries(${EUDAQ_MODULE} ${SRS_LIBRARY})
