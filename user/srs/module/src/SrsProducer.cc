@@ -125,6 +125,7 @@ void SrsProducer::RunLoop(){
         ev->SetEventN(m_trig_num);
         ev->SetTimestamp(frames.begin()->frameCounter().timestamp(), frames.rbegin()->frameCounter().timestamp());
       }
+      EUDAQ_DEBUG("Received "+std::to_string(frames.size())+" frame(s) from FEC#"+std::to_string(i));
       for (const auto& frame : frames)
         ev->AddBlock(frame.daqChannel(), frame);
     }
