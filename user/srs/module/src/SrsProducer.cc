@@ -41,7 +41,7 @@ private:
         }
       } buff_;
     public:
-      SrsBuffer() : buff_(), std::ostream(&buff_) {}
+      SrsBuffer():buff_(), std::ostream(&buff_){}
   } m_ostream;
   std::unique_ptr<srs::SlowControl> m_srs;
   std::vector<srs::port_t> m_rd_ports;
@@ -74,6 +74,7 @@ void SrsProducer::DoInitialise(){
   for (const auto& ini_file : eudaq::split(in_scripts, ",")) {
     std::string addr;
     srs::port_t port;
+    EUDAQ_DEBUG("Parsing and sending SRS configuration commands in "+ini_file);
     const auto config = srs::Messenger::parseCommands(ini_file, addr, port);
     srs::Messenger msg(addr);
     msg.send(port, config);
