@@ -5,6 +5,7 @@
 #include <set>
 #include <streambuf>
 #include <iostream>
+#include <future>
 
 #include "srsdriver/Logging.h"
 #include "srsdriver/SlowControl.h"
@@ -45,6 +46,9 @@ private:
   } m_ostream;
   std::unique_ptr<srs::SlowControl> m_srs;
   std::vector<srs::port_t> m_rd_ports;
+
+  using Frames = std::vector<srs::SrsFrame>;
+  std::vector<std::future<Frames> > m_readouts;
 };
 
 namespace{
@@ -90,8 +94,11 @@ void SrsProducer::DoConfigure(){
     EUDAQ_THROW("Failed to retrieve the SRS server address!");
 
   m_srs = std::make_unique<srs::SlowControl>(addr_server);
-  for (const auto& port : m_rd_ports)
+  size_t i = 0;
+  for (const auto& port : m_rd_ports) {
     m_srs->addFec(port);
+    m_readouts.emplace_back(std::async(std::launch::async, [&](){return m_srs->read(i++);}));
+  }
 }
 
 void SrsProducer::DoStartRun(){
@@ -119,7 +126,12 @@ void SrsProducer::RunLoop(){
 
   while (!m_exit_of_run) {
     for (size_t i = 0; i < m_srs->numFec(); ++i) {
-      auto frames = m_srs->read(i);
+      std::cout<<"before:"<<i<<std::endl;
+      if (!m_readouts[i].valid())
+        continue;
+      std::cout<<"after:"<<i<<std::endl;
+
+      const auto frames = m_readouts[i].get();
       auto& ev = map_events[i];
       if (!ev) {
         ev = eudaq::Event::MakeUnique("SrsRaw");
