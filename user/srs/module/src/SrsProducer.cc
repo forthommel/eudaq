@@ -94,21 +94,20 @@ void SrsProducer::DoConfigure(){
     EUDAQ_THROW("Failed to retrieve the SRS server address!");
 
   m_srs = std::make_unique<srs::SlowControl>(addr_server);
-  size_t i = 0;
-  for (const auto& port : m_rd_ports) {
+  for (const auto& port : m_rd_ports)
     m_srs->addFec(port);
-    m_readouts.emplace_back(std::async(std::launch::async, [&](){return m_srs->read(i++);}));
-  }
 }
 
 void SrsProducer::DoStartRun(){
   m_srs->setReadoutEnable(true);
   m_exit_of_run = false;
+  std::cout<<"Finished dostartrun"<<std::endl;
 }
 
 void SrsProducer::DoStopRun(){
   m_srs->setReadoutEnable(false);
   m_exit_of_run = true;
+  std::cout<<"Finished dostoprun"<<std::endl;
 }
 
 void SrsProducer::DoReset(){
@@ -124,14 +123,30 @@ void SrsProducer::RunLoop(){
   auto tp_start_run = std::chrono::steady_clock::now();
   std::map<unsigned int,eudaq::EventUP> map_events;
 
+  //for (size_t i = 0; i < m_srs->numFec(); ++i)
+    //m_readouts.emplace_back(std::async(std::launch::async, [&](){return m_srs->read(i);}));
+
+  //std::future_status status;
+  bool ready_to_send = false;
   while (!m_exit_of_run) {
+    ready_to_send = false;
+    std::cout << "new batch!!!" << std::endl;
     for (size_t i = 0; i < m_srs->numFec(); ++i) {
       std::cout<<"before:"<<i<<std::endl;
-      if (!m_readouts[i].valid())
-        continue;
+      if (m_exit_of_run)
+        return;
+      std::future<Frames> readout = std::async(std::launch::async, [&](){return m_srs->read(i);});
+      if (readout.wait_for(std::chrono::seconds(1)) == std::future_status::timeout) {
+        std::cout<<"timeout:"<<i<<std::endl;
+        std::cout<<i<<"::"<<m_exit_of_run<<std::endl;
+        //continue;
+      }
       std::cout<<"after:"<<i<<std::endl;
+      //std::cout<<i<<"::"<<m_exit_of_run<<std::endl;
 
-      const auto frames = m_readouts[i].get();
+      std::cout << "ready for parsing!!!" <<std::endl;
+
+      const auto frames = readout.get();
       auto& ev = map_events[i];
       if (!ev) {
         ev = eudaq::Event::MakeUnique("SrsRaw");
@@ -142,13 +157,20 @@ void SrsProducer::RunLoop(){
       EUDAQ_DEBUG("Received "+std::to_string(frames.size())+" frame(s) from FEC#"+std::to_string(i));
       for (const auto& frame : frames)
         ev->AddBlock(frame.daqChannel(), frame);
+      std::cout<<i<<">>> new loop"<<std::endl;
+      ready_to_send = true;
     }
-    for (auto it = map_events.begin(); it != map_events.end(); /* no increment */) {
-      SendEvent(std::move(it->second));
-      it = map_events.erase(it);
-      if (m_trig_num++ % 1000 == 0)
-        EUDAQ_INFO("Number of triggers sent: "+std::to_string(m_trig_num));
+    std::cout<<"finished loop on fecs:"<<ready_to_send<<":"<<m_exit_of_run<<std::endl;
+    if (ready_to_send) {
+      std::cout<<"--->will start sending"<<std::endl;
+      for (auto it = map_events.begin(); it != map_events.end(); /* no increment */) {
+        SendEvent(std::move(it->second));
+        it = map_events.erase(it);
+        if (m_trig_num++ % 1000 == 0)
+          EUDAQ_INFO("Number of triggers sent: "+std::to_string(m_trig_num));
+      }
+      ready_to_send = false;
     }
-    m_trig_num++;
   }
+  m_trig_num++;
 }
