@@ -3,7 +3,10 @@
 #include <mutex>
 #include <map>
 #include <set>
+#include <streambuf>
+#include <iostream>
 
+#include "srsdriver/Logging.h"
 #include "srsdriver/SlowControl.h"
 #include "srsdriver/Messenger.h"
 #include "srsdriver/Receiver.h"
@@ -22,10 +25,26 @@ public:
 
   static const uint32_t m_id_factory = eudaq::cstr2hash("SrsProducer");
 private:
-  uint64_t m_ts_bore;
-  bool m_exit_of_run;
+  uint64_t m_ts_bore = 0;
+  bool m_exit_of_run = false;
+  unsigned long long m_trig_num = 0;
+
+  /// Output stream derivation to EUDAQ_INFO
+  class SrsBuffer:public std::ostream{
+    private:
+      struct SrsLogger:public std::stringbuf{
+        int sync() override{
+          int ret = std::stringbuf::sync();
+          EUDAQ_DEBUG(str());
+          str("");
+          return ret;
+        }
+      } buff_;
+    public:
+      SrsBuffer() : buff_(), std::ostream(&buff_) {}
+  } m_ostream;
   std::unique_ptr<srs::SlowControl> m_srs;
-  bool m_debug;
+  std::vector<srs::port_t> m_rd_ports;
 };
 
 namespace{
@@ -35,23 +54,32 @@ namespace{
 }
 
 SrsProducer::SrsProducer(const std::string &name, const std::string &runcontrol):
-  Producer(name, runcontrol),m_ts_bore(0),m_exit_of_run(false), m_debug(false){
+  Producer(name, runcontrol){
+  srs::Logger::get().pretty = false;
+  srs::Logger::get().setOutput(&m_ostream);
 }
 
 void SrsProducer::DoInitialise(){
   auto ini = GetInitConfiguration();
-  m_debug = ini->Get("SRS_DEBUG", 0);
+
+  // set debugging mode
+  if (ini->Get("SRS_DEBUG", 0) == 1)
+    srs::Logger::get().setLevel(srs::Logger::Level::debug);
+
+  // set the list of initialisation scripts
   const std::string in_scripts = ini->Get("SRS_INIT_SCRIPTS", "");
   if (in_scripts.empty())
     EUDAQ_THROW("Failed to retrieve an initialisation script!");
 
-  std::string addr;
-  srs::port_t port;
   for (const auto& ini_file : eudaq::split(in_scripts, ",")) {
+    std::string addr;
+    srs::port_t port;
     const auto config = srs::Messenger::parseCommands(ini_file, addr, port);
-    srs::Messenger msg(addr, m_debug);
+    srs::Messenger msg(addr);
     msg.send(port, config);
   }
+  for (const auto& ports : eudaq::split(ini->Get("SRS_READOUT_PORTS", "6006")))
+    m_rd_ports.emplace_back(std::stoi(ports));
 }
 
 void SrsProducer::DoConfigure(){
@@ -60,7 +88,7 @@ void SrsProducer::DoConfigure(){
   if (addr_server.empty())
     EUDAQ_THROW("Failed to retrieve the SRS server address!");
 
-  m_srs = std::make_unique<srs::SlowControl>(addr_server, m_debug);
+  m_srs = std::make_unique<srs::SlowControl>(addr_server);
 }
 
 void SrsProducer::DoStartRun(){
@@ -87,6 +115,24 @@ void SrsProducer::RunLoop(){
   std::map<unsigned int,eudaq::EventUP> map_events;
 
   while (!m_exit_of_run) {
-    m_srs->read(0);
+    for (size_t i = 0; i < m_srs->numFec(); ++i) {
+      auto frames = m_srs->read(i);
+      auto& ev = map_events[i];
+      if (!ev) {
+        ev = eudaq::Event::MakeUnique("SrsRaw");
+        ev->SetTriggerN(m_trig_num);
+        ev->SetEventN(m_trig_num);
+        ev->SetTimestamp(frames.begin()->frameCounter().timestamp(), frames.rbegin()->frameCounter().timestamp());
+      }
+      for (const auto& frame : frames)
+        ev->AddBlock(frame.daqChannel(), frame);
+    }
+    for (auto it = map_events.begin(); it != map_events.end(); /* no increment */) {
+      SendEvent(std::move(it->second));
+      it = map_events.erase(it);
+      if (m_trig_num++ % 1000 == 0)
+        EUDAQ_INFO("Number of triggers sent: "+std::to_string(m_trig_num));
+    }
+    m_trig_num++;
   }
 }
