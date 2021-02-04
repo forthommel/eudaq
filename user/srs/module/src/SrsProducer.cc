@@ -79,8 +79,8 @@ void SrsProducer::DoInitialise(){
     srs::Messenger msg(addr);
     msg.send(port, config);
   }
-  for (const auto& ports : eudaq::split(ini->Get("SRS_READOUT_PORTS", "6006")))
-    m_rd_ports.emplace_back(std::stoi(ports));
+  for (const auto& port : eudaq::split(ini->Get("SRS_READOUT_PORTS", "6006")))
+    m_rd_ports.emplace_back(std::stoi(port));
 }
 
 void SrsProducer::DoConfigure(){
@@ -90,6 +90,8 @@ void SrsProducer::DoConfigure(){
     EUDAQ_THROW("Failed to retrieve the SRS server address!");
 
   m_srs = std::make_unique<srs::SlowControl>(addr_server);
+  for (const auto& port : m_rd_ports)
+    m_srs->addFec(port);
 }
 
 void SrsProducer::DoStartRun(){
