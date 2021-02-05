@@ -4,7 +4,7 @@
 #include <map>
 #include <set>
 #include <streambuf>
-#include <iostream>
+//#include <iostream>
 #include <future>
 
 #include "srsdriver/Logging.h"
@@ -48,7 +48,6 @@ private:
   std::vector<srs::port_t> m_rd_ports;
 
   using Frames = std::vector<srs::SrsFrame>;
-  std::vector<std::future<Frames> > m_readouts;
 };
 
 namespace{
@@ -123,32 +122,24 @@ void SrsProducer::RunLoop(){
   auto tp_start_run = std::chrono::steady_clock::now();
   std::map<unsigned int,eudaq::EventUP> map_events;
 
-  //for (size_t i = 0; i < m_srs->numFec(); ++i)
-    //m_readouts.emplace_back(std::async(std::launch::async, [&](){return m_srs->read(i);}));
-
-  //std::future_status status;
-  bool ready_to_send = false;
   while (!m_exit_of_run) {
-    ready_to_send = false;
-    std::cout << "new batch!!!" << std::endl;
     for (size_t i = 0; i < m_srs->numFec(); ++i) {
-      std::cout<<"before:"<<i<<std::endl;
       if (m_exit_of_run)
         return;
-      std::future<Frames> readout = std::async(std::launch::async, [&](){return m_srs->read(i);});
-      if (readout.wait_for(std::chrono::seconds(1)) == std::future_status::timeout) {
-        std::cout<<"timeout:"<<i<<std::endl;
-        std::cout<<i<<"::"<<m_exit_of_run<<std::endl;
-        //continue;
+      // set timeout on readout procedure to avoid keeping the thread hanging
+      std::packaged_task<Frames()> task([&](){return m_srs->read(i);});
+      auto future = task.get_future();
+      std::thread thr(std::move(task));
+      if (future.wait_for(std::chrono::seconds(1)) == std::future_status::timeout) {
+        thr.detach();
+        continue;
       }
-      std::cout<<"after:"<<i<<std::endl;
-      //std::cout<<i<<"::"<<m_exit_of_run<<std::endl;
-
-      std::cout << "ready for parsing!!!" <<std::endl;
-
-      const auto frames = readout.get();
+      thr.join();
+      // retrieve the frames once readout has succeeded
+      auto frames = future.get();
       auto& ev = map_events[i];
       if (!ev) {
+        // create a new output event if not already found
         ev = eudaq::Event::MakeUnique("SrsRaw");
         ev->SetTriggerN(m_trig_num);
         ev->SetEventN(m_trig_num);
@@ -157,19 +148,12 @@ void SrsProducer::RunLoop(){
       EUDAQ_DEBUG("Received "+std::to_string(frames.size())+" frame(s) from FEC#"+std::to_string(i));
       for (const auto& frame : frames)
         ev->AddBlock(frame.daqChannel(), frame);
-      std::cout<<i<<">>> new loop"<<std::endl;
-      ready_to_send = true;
     }
-    std::cout<<"finished loop on fecs:"<<ready_to_send<<":"<<m_exit_of_run<<std::endl;
-    if (ready_to_send) {
-      std::cout<<"--->will start sending"<<std::endl;
-      for (auto it = map_events.begin(); it != map_events.end(); /* no increment */) {
-        SendEvent(std::move(it->second));
-        it = map_events.erase(it);
-        if (m_trig_num++ % 1000 == 0)
-          EUDAQ_INFO("Number of triggers sent: "+std::to_string(m_trig_num));
-      }
-      ready_to_send = false;
+    for (auto it = map_events.begin(); it != map_events.end(); /* no increment */) {
+      SendEvent(std::move(it->second));
+      it = map_events.erase(it);
+      if (m_trig_num++ % 1000 == 0)
+        EUDAQ_INFO("Number of triggers sent: "+std::to_string(m_trig_num));
     }
   }
   m_trig_num++;
