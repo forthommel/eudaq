@@ -58,8 +58,7 @@ namespace{
 
 SrsProducer::SrsProducer(const std::string &name, const std::string &runcontrol):
   Producer(name, runcontrol){
-  srs::Logger::get().pretty = false;
-  srs::Logger::get().setOutput(&m_ostream);
+  srs::Logger::get().setOutput(&m_ostream, false);
 }
 
 void SrsProducer::DoInitialise(){
