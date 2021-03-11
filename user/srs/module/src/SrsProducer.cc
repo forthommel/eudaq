@@ -4,13 +4,15 @@
 #include <map>
 #include <set>
 #include <streambuf>
-//#include <iostream>
 #include <future>
+#include <atomic>
 
-#include "srsdriver/Logging.h"
 #include "srsdriver/SlowControl.h"
 #include "srsdriver/Messenger.h"
 #include "srsdriver/Receiver.h"
+#include "srsdriver/SrsFrame.h"
+
+#include "srsutils/Logging.h"
 
 class SrsProducer:public eudaq::Producer{
 public:
@@ -27,7 +29,7 @@ public:
   static const uint32_t m_id_factory = eudaq::cstr2hash("SrsProducer");
 private:
   uint64_t m_ts_bore = 0;
-  bool m_exit_of_run = false;
+  std::atomic_bool m_running = {false};
   unsigned long long m_trig_num = 0;
 
   /// Output stream derivation to EUDAQ_INFO
@@ -46,6 +48,7 @@ private:
   } m_ostream;
   std::unique_ptr<srs::SlowControl> m_srs;
   std::vector<srs::port_t> m_rd_ports;
+  std::vector<std::vector<srs::SrsFrameCollection> > m_frames;
 
   using Frames = std::vector<srs::SrsFrame>;
 };
@@ -92,68 +95,66 @@ void SrsProducer::DoConfigure(){
     EUDAQ_THROW("Failed to retrieve the SRS server address!");
 
   m_srs = std::make_unique<srs::SlowControl>(addr_server);
-  for (const auto& port : m_rd_ports)
+  for (const auto& port : m_rd_ports) {
     m_srs->addFec(port);
+    m_frames.emplace_back(); // add a new collection of frames
+  }
 }
 
 void SrsProducer::DoStartRun(){
   m_srs->setReadoutEnable(true);
-  m_exit_of_run = false;
+  m_running = true;
   std::cout<<"Finished dostartrun"<<std::endl;
 }
 
 void SrsProducer::DoStopRun(){
   m_srs->setReadoutEnable(false);
-  m_exit_of_run = true;
+  m_running = false;
   std::cout<<"Finished dostoprun"<<std::endl;
 }
 
 void SrsProducer::DoReset(){
-  m_exit_of_run = true;
+  m_running = false;
   //...
 }
 
 void SrsProducer::DoTerminate(){
-  m_exit_of_run = true;
+  m_running = false;
 }
 
 void SrsProducer::RunLoop(){
   auto tp_start_run = std::chrono::steady_clock::now();
-  std::map<unsigned int,eudaq::EventUP> map_events;
+  std::map<unsigned int,eudaq::EventUP> map_events; // trigger time -> event
 
-  while (!m_exit_of_run) {
-    for (size_t i = 0; i < m_srs->numFec(); ++i) {
-      if (m_exit_of_run)
-        return;
-      // set timeout on readout procedure to avoid keeping the thread hanging
-      std::packaged_task<Frames()> task([&](){return m_srs->read(i);});
-      auto future = task.get_future();
-      std::thread thr(std::move(task));
-      if (future.wait_for(std::chrono::seconds(1)) == std::future_status::timeout) {
-        thr.detach();
-        continue;
-      }
-      thr.join();
-      // retrieve the frames once readout has succeeded
-      auto frames = future.get();
-      auto& ev = map_events[i];
+  for (size_t i = 0; i < m_srs->numFec(); ++i) {
+    auto future = std::async(std::launch::async, &srs::SlowControl::readout, m_srs.get(), std::ref(m_frames[i]), i, std::ref(m_running));
+    if (future.wait_for(std::chrono::milliseconds(500)) == std::future_status::timeout) {
+      m_running = false;
+      return;
+    }
+  }
+  for (size_t i = 0; i < m_frames.size(); ++i) { // loop over all FECs
+    for (auto& frames : m_frames.at(i)) { // loop over all events in FEC
+      const auto trig_time_beg = frames.begin()->frameCounter().timestamp();
+      const auto trig_time_end = frames.rbegin()->frameCounter().timestamp();
+      auto& ev = map_events[trig_time_beg];
       if (!ev) {
         // create a new output event if not already found
         ev = eudaq::Event::MakeUnique("SrsRaw");
         ev->SetTriggerN(m_trig_num);
         ev->SetEventN(m_trig_num);
-        ev->SetTimestamp(frames.begin()->frameCounter().timestamp(), frames.rbegin()->frameCounter().timestamp());
+        ev->SetTimestamp(trig_time_beg, trig_time_end);
       }
-      EUDAQ_DEBUG("Received "+std::to_string(frames.size())+" frame(s) from FEC#"+std::to_string(i));
-      for (const auto& frame : frames)
+      for (const auto& frame : frames) // loop over all frames in event
         ev->AddBlock(frame.daqChannel(), frame);
+      frames.clear();
     }
-    for (auto it = map_events.begin(); it != map_events.end(); /* no increment */) {
-      SendEvent(std::move(it->second));
-      it = map_events.erase(it);
-      if (m_trig_num++ % 1000 == 0)
-        EUDAQ_INFO("Number of triggers sent: "+std::to_string(m_trig_num));
-    }
+  }
+  for (auto it = map_events.begin(); it != map_events.end();) { // no increment
+    SendEvent(std::move(it->second));
+    it = map_events.erase(it);
+    if (m_trig_num++ % 1000 == 0)
+      EUDAQ_INFO("Number of triggers sent: "+std::to_string(m_trig_num));
   }
   m_trig_num++;
 }
