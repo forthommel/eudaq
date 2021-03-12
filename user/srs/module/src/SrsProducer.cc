@@ -102,23 +102,20 @@ void SrsProducer::DoConfigure() {
   m_srs = std::make_unique<srs::SlowControl>(addr_server);
   for (const auto &port : m_rd_ports)
     m_srs->addFec(port);
-  const auto apvapp = m_srs->readApvAppRegister();
   m_srs_config = eudaq::Event::MakeUnique("SrsConfig");
-  srs::words_t apvapp_words;
-  for (const auto &word : apvapp)
+  srs::words_t sys_words, apvapp_words;
+  for (const auto &word : m_srs->readSystemRegister())
+    sys_words.emplace_back(*word);
+  for (const auto &word : m_srs->readApvAppRegister())
     apvapp_words.emplace_back(*word);
-  const auto nblks_apvapp = m_srs_config->AddBlock(0, apvapp_words);
-  EUDAQ_DEBUG("APVAPP register wrote ("+std::to_string(nblks_apvapp)+" words)");
+  m_srs_config->AddBlock(0, sys_words);
+  m_srs_config->AddBlock(1, apvapp_words);
   m_sent_config = false;
 }
 
 void SrsProducer::DoStartRun() {
   m_srs->setReadoutEnable(true);
   m_running = true;
-  if (!m_sent_config) {
-    SendEvent(std::move(m_srs_config));
-    m_sent_config = true;
-  }
 }
 
 void SrsProducer::DoStopRun() {
@@ -167,6 +164,18 @@ void SrsProducer::RunLoop() {
       if (!ev) {
         // create a new output event if not already found
         ev = eudaq::Event::MakeUnique("SrsRaw");
+        if (!m_sent_config) {
+          EUDAQ_DEBUG("SYS register wrote (" +
+                      std::to_string(m_srs_config->GetBlock(0).size()) +
+                      " words)");
+          EUDAQ_DEBUG("APVAPP register wrote (" +
+                      std::to_string(m_srs_config->GetBlock(1).size()) +
+                      " words)");
+          ev->AddSubEvent(std::move(m_srs_config));
+          ev->SetBORE();
+          // SendEvent(std::move(m_srs_config));
+          m_sent_config = true;
+        }
         ev->SetTriggerN(m_trig_num);
         ev->SetEventN(m_trig_num);
         const auto trig_time_end =
