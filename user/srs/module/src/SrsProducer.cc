@@ -49,6 +49,8 @@ private:
   } m_ostream;
   std::unique_ptr<srs::SlowControl> m_srs;
   std::vector<srs::port_t> m_rd_ports;
+  eudaq::EventUP m_srs_config;
+  bool m_sent_config = false;
 };
 
 namespace{
@@ -97,20 +99,33 @@ void SrsProducer::DoConfigure(){
   m_srs.reset(new srs::SlowControl(addr_server));
   for (const auto& port : m_rd_ports)
     m_srs->addFec(port);
+  const auto apvapp = m_srs->readApvAppRegister();
+  m_srs_config = eudaq::Event::MakeUnique("SrsConfig");
+  srs::words_t apvapp_words;
+  for (const auto& word : apvapp)
+    apvapp_words.emplace_back(*word);
+  m_srs_config->AddBlock(0, apvapp_words);
+  m_sent_config = false;
 }
 
 void SrsProducer::DoStartRun(){
   m_srs->setReadoutEnable(true);
   m_running = true;
+  if (!m_sent_config) {
+    SendEvent(std::move(m_srs_config));
+    m_sent_config = true;
+  }
 }
 
 void SrsProducer::DoStopRun(){
   m_srs->setReadoutEnable(false);
   m_running = false;
+  m_sent_config = false;
 }
 
 void SrsProducer::DoReset(){
   m_running = false;
+  m_sent_config = false;
   if (m_srs)
     m_srs->clearFecs();
   //...
@@ -118,6 +133,7 @@ void SrsProducer::DoReset(){
 
 void SrsProducer::DoTerminate(){
   m_running = false;
+  m_sent_config = false;
   m_srs.release();
 }
 
