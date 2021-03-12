@@ -25,7 +25,8 @@ SrsEvent::SrsEvent(const Event& ev) {
 }
 
 void SrsEvent::ConvertBlock(const std::vector<uint8_t>& block8) {
-
+  for (const auto& b : block8)
+    printf("0x%08x\n", b);
 }
 
 void SrsEvent::Print(std::ostream& os, size_t offset) const {
