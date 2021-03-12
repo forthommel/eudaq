@@ -1,7 +1,7 @@
 #include "eudaq/ROOTMonitor.hh"
 #include "eudaq/StdEventConverter.hh"
 
-#include "srsdriver/SrsFrame.h"
+#include "SrsEvent.hh"
 
 #include "TH1.h"
 #include "TH2.h"
@@ -33,10 +33,24 @@ SrsMonitor::SrsMonitor(const std::string & name, const std::string & runcontrol)
 }
 
 void SrsMonitor::AtConfiguration(){
+
 }
 
 void SrsMonitor::AtRunStop(){
 }
 
 void SrsMonitor::AtEventReception(eudaq::EventSP ev){
+  eudaq::SrsEventSP event;
+  if (ev->GetSubEvents().empty() && ev->GetDescription() == "SrsRaw")
+    event = std::make_shared<eudaq::SrsEvent>(*ev);
+  for (auto& sub_evt : ev->GetSubEvents()) {
+    if (sub_evt->GetDescription() == "SrsRaw")
+      event = std::make_shared<eudaq::SrsEvent>(*ev);
+  }
+  if (!event)
+    return;
+
+  //for (const auto& sample : *event) {
+  //  const auto ch_id = sample.daqIndex();
+  //}
 }
