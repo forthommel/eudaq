@@ -41,6 +41,16 @@ void SrsMonitor::AtRunStop(){
 
 void SrsMonitor::AtEventReception(eudaq::EventSP ev){
   eudaq::SrsEventSP event;
-  if (ev->GetDescription() == "SrsRaw")
+  if (ev->GetSubEvents().empty() && ev->GetDescription() == "SrsRaw")
     event = std::make_shared<eudaq::SrsEvent>(*ev);
+  for (auto& sub_evt : ev->GetSubEvents()) {
+    if (sub_evt->GetDescription() == "SrsRaw")
+      event = std::make_shared<eudaq::SrsEvent>(*ev);
+  }
+  if (!event)
+    return;
+
+  //for (const auto& sample : *event) {
+  //  const auto ch_id = sample.daqIndex();
+  //}
 }
