@@ -107,7 +107,8 @@ void SrsProducer::DoConfigure() {
   srs::words_t apvapp_words;
   for (const auto &word : apvapp)
     apvapp_words.emplace_back(*word);
-  m_srs_config->AddBlock(0, apvapp_words);
+  const auto nblks_apvapp = m_srs_config->AddBlock(0, apvapp_words);
+  EUDAQ_DEBUG("APVAPP register wrote ("+std::to_string(nblks_apvapp)+" words)");
   m_sent_config = false;
 }
 

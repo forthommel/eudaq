@@ -28,11 +28,19 @@ void SrsConfig::ConvertBlock(const std::vector<uint8_t>& block8) {
     block32.emplace_back(
       block8[i] + (block8[i+1] << 8) + (block8[i+2] << 16) + (block8[i+3] << 24)
     );
+  apvapp_ = srs::ApvAppRegister(block32);
   std::cout << "block: " << block32.size() << std::endl;
+  for (const auto& b : block32)printf("%08x\n", b);
   //frmbuf_ = std::make_unique<srs::SrsFrame>(block32, eb_mode_);
 }
 
 void SrsConfig::Print(std::ostream& os, size_t offset) const {
   os
-    << std::string(offset, ' ') << "<SrsConfig/>\n";
+    << std::string(offset, ' ') << "<SrsConfig>\n"
+    << std::string(offset+2, ' ') << "<ApvAppRegister>\n"
+    << "<!--";
+  apvapp_.print(os);
+  os << "-->\n"
+    << std::string(offset+2, ' ') << "</ApvAppRegister>\n"
+    << std::string(offset, ' ') << "<SrsConfig>\n";
 }

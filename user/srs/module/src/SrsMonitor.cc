@@ -50,8 +50,9 @@ void SrsMonitor::AtEventReception(eudaq::EventSP ev){
     if (ev->GetDescription() != "SrsConfig")
       EUDAQ_THROW("Failed to retrieve the SRS configuration from data stream!");
     m_config = std::make_unique<eudaq::SrsConfig>(*ev);
+    m_config->Print(std::cout);
   }
-
+  exit(0);
   eudaq::SrsEventSP event;
   auto eb_mode = srs::ApvAppRegister::FRAME_EVENT_CNT; //FIXME
   if (ev->GetSubEvents().empty() && ev->GetDescription() == "SrsRaw")
