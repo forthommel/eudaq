@@ -66,7 +66,6 @@ void SrsMonitor::AtRunStop(){
 void SrsMonitor::AtEventReception(eudaq::EventSP ev){
   eudaq::SrsEventSP event;
 
-  std::cout << ">>>>>> " << ev->GetDescription() << std::endl;
   if (ev->GetSubEvents().empty()) { // standard event with no sub-event
     if (ev->GetDescription() == "SrsConfig") {
       m_config = std::make_unique<eudaq::SrsConfig>(*ev);
@@ -77,10 +76,9 @@ void SrsMonitor::AtEventReception(eudaq::EventSP ev){
       event = std::make_shared<eudaq::SrsEvent>(*ev, m_apvapp.ebMode());
   }
   else // in case sub-events are present in event stream
-    for (auto& sub_evt : ev->GetSubEvents()) {
+    for (auto& sub_evt : ev->GetSubEvents())
       if (sub_evt->GetDescription() == "SrsRaw")
         event = std::make_shared<eudaq::SrsEvent>(*ev, m_apvapp.ebMode());
-    }
   if (!event)
     return;
 
@@ -89,9 +87,10 @@ void SrsMonitor::AtEventReception(eudaq::EventSP ev){
   if (m_map_ch_framebuf.count(ch_id) == 0) {
     m_map_ch_framebuf[ch_id] = m_monitor->Book<TGraph>(Form("channel %zu/framebuf", ch_id), "Frame buffer");
     m_map_ch_framebuf[ch_id]->SetTitle(";Time slice;ADC count");
+    //m_monitor->SetPersistant(m_map_ch_framebuf[ch_id], false);
     m_map_ch_framebuf_zs[ch_id] = m_monitor->Book<TGraph>(Form("channel %zu/framebuf_zs", ch_id), "Frame buffer (ZS)");
     m_map_ch_framebuf_zs[ch_id]->SetTitle(";Time slice;ADC count (zero-suppressed)");
-    //m_monitor->SetPersistant(m_map_ch_framebuf[ch_id], false);
+    //m_monitor->SetPersistant(m_map_ch_framebuf_zs[ch_id], false);
     m_map_ch_maxampl[ch_id] = m_monitor->Book<TH1D>(Form("channel %zu/maxampl", ch_id), "Max.amplitude", Form("maxampl_ch%zu", ch_id), Form("Channel %zu;Max. amplitude;Events", ch_id), 100, 0., 4000.);
     m_map_ch_maxampl_zs[ch_id] = m_monitor->Book<TH1D>(Form("channel %zu/maxampl_zs", ch_id), "Max.amplitude (ZS)", Form("maxampl_ch%zu_zs", ch_id), Form("Channel %zu;Max. amplitude (zero-suppressed);Events", ch_id), 100, 0., 2000.);
   }
@@ -104,10 +103,11 @@ void SrsMonitor::AtEventReception(eudaq::EventSP ev){
         const auto frms = adc_frm.next();
         float baseline = std::accumulate(frms.data.begin(), frms.data.begin()+20, 0.)/20.;
         for (const auto& frm : frms.data) {
-          m_map_ch_framebuf[ch_id]->SetPoint(m_map_ch_framebuf[ch_id]->GetN(), i, (float)frm);
-          m_map_ch_framebuf_zs[ch_id]->SetPoint(m_map_ch_framebuf_zs[ch_id]->GetN(), i, (float)(frm-baseline));
-          max_ampl = std::max(max_ampl, (float)frm);
-          max_ampl_zs = std::max(max_ampl, (float)(frm-baseline));
+          const float val = frm, val_zs = val-baseline;
+          m_map_ch_framebuf[ch_id]->SetPoint(m_map_ch_framebuf[ch_id]->GetN(), i, val);
+          m_map_ch_framebuf_zs[ch_id]->SetPoint(m_map_ch_framebuf_zs[ch_id]->GetN(), i, val_zs);
+          max_ampl = std::max(max_ampl, val);
+          max_ampl_zs = std::max(max_ampl_zs, val_zs);
           ++i;
         }
         m_map_ch_maxampl[ch_id]->Fill(max_ampl);

@@ -20,6 +20,7 @@ SrsConfig::SrsConfig(const Event& ev) {
   SetType(m_id_factory);
   for (auto& block_n : ev.GetBlockNumList())
     ConvertBlock(block_n, ev.GetBlock(block_n));
+  //exit(0);
 }
 
 void SrsConfig::ConvertBlock(unsigned short reg, const std::vector<uint8_t>& block8) {
@@ -31,14 +32,15 @@ void SrsConfig::ConvertBlock(unsigned short reg, const std::vector<uint8_t>& blo
   switch (reg) {
     case 0:
       sys_ = srs::SystemRegister(block32);
+      sys_.print(std::cout);
+      sys_.printConfig(std::cout);
       break;
     case 1:
       apvapp_ = srs::ApvAppRegister(block32);
+      apvapp_.print(std::cout);
+      apvapp_.printConfig(std::cout);
       break;
   }
-  sys_.print(std::cout);
-  apvapp_.print(std::cout);
-  exit(0);
 }
 
 void SrsConfig::Print(std::ostream& os, size_t offset) const {
