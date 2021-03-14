@@ -28,7 +28,7 @@ SrsEvent::SrsEvent(const Event& ev, const srs::ApvAppRegister::EventBuilderMode&
 
 void SrsEvent::ConvertBlock(const std::vector<uint8_t>& block8) {
   srs::words_t block32; // convert 8-bit to 32-bit words
-  for (size_t i = 0; i < block8.size()/4; i += 4)
+  for (size_t i = 0; i < block8.size(); i += 4)
     block32.emplace_back(
       block8[i] + (block8[i+1] << 8) + (block8[i+2] << 16) + (block8[i+3] << 24)
     );
