@@ -114,6 +114,14 @@ void SrsProducer::DoConfigure() {
 }
 
 void SrsProducer::DoStartRun() {
+  if (!m_sent_config) {
+    EUDAQ_DEBUG("SYS register wrote (" +
+                std::to_string(m_srs_config->GetBlock(0).size()) + " words)");
+    EUDAQ_DEBUG("APVAPP register wrote (" +
+                std::to_string(m_srs_config->GetBlock(1).size()) + " words)");
+    SendEvent(std::move(m_srs_config));
+    m_sent_config = true;
+  }
   m_srs->setReadoutEnable(true);
   m_running = true;
 }
@@ -164,18 +172,6 @@ void SrsProducer::RunLoop() {
       if (!ev) {
         // create a new output event if not already found
         ev = eudaq::Event::MakeUnique("SrsRaw");
-        if (!m_sent_config) {
-          EUDAQ_DEBUG("SYS register wrote (" +
-                      std::to_string(m_srs_config->GetBlock(0).size()) +
-                      " words)");
-          EUDAQ_DEBUG("APVAPP register wrote (" +
-                      std::to_string(m_srs_config->GetBlock(1).size()) +
-                      " words)");
-          ev->AddSubEvent(std::move(m_srs_config));
-          ev->SetBORE();
-          // SendEvent(std::move(m_srs_config));
-          m_sent_config = true;
-        }
         ev->SetTriggerN(m_trig_num);
         ev->SetEventN(m_trig_num);
         const auto trig_time_end =
