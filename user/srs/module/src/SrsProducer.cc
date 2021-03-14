@@ -100,25 +100,29 @@ void SrsProducer::DoConfigure() {
     EUDAQ_THROW("Failed to retrieve the SRS server address!");
 
   m_srs = std::make_unique<srs::SlowControl>(addr_server);
-  for (const auto &port : m_rd_ports)
-    m_srs->addFec(port);
+  //--- build a configuration word payload
   m_srs_config = eudaq::Event::MakeUnique("SrsConfig");
   srs::words_t sys_words, apvapp_words;
   for (const auto &word : m_srs->readSystemRegister())
     sys_words.emplace_back(*word);
+  m_srs_config->AddBlock(0, sys_words);
   for (const auto &word : m_srs->readApvAppRegister())
     apvapp_words.emplace_back(*word);
-  m_srs_config->AddBlock(0, sys_words);
   m_srs_config->AddBlock(1, apvapp_words);
   m_sent_config = false;
+  //--- add the FEC readout port
+  for (const auto &port : m_rd_ports)
+    m_srs->addFec(port);
 }
 
 void SrsProducer::DoStartRun() {
   if (!m_sent_config) {
-    EUDAQ_DEBUG("SYS register wrote (" +
-                std::to_string(m_srs_config->GetBlock(0).size()) + " words)");
-    EUDAQ_DEBUG("APVAPP register wrote (" +
-                std::to_string(m_srs_config->GetBlock(1).size()) + " words)");
+    EUDAQ_DEBUG("SRS configuration wrote:\n"
+                "SYS register: " +
+                std::to_string(m_srs_config->GetBlock(0).size()) +
+                " words\n"
+                " APVAPP reg.: " +
+                std::to_string(m_srs_config->GetBlock(1).size()) + " words");
     SendEvent(std::move(m_srs_config));
     m_sent_config = true;
   }
@@ -180,15 +184,11 @@ void SrsProducer::RunLoop() {
       }
       for (const auto &buf : frmbuf)
         ev->AddBlock(buf.daqChannel(), buf);
-    }
-    // send all events to collector
-    for (auto it = map_events.begin();
-         it != map_events.end();) { // no increment
-      SendEvent(std::move(it->second));
-      it = map_events.erase(it);
-      if (m_trig_num + 1 % 10 == 0)
+      if (m_trig_num + 1 % 100 == 0)
         EUDAQ_INFO("Number of triggers sent: " + std::to_string(m_trig_num));
       m_trig_num++;
+      // send all events to collector
+      SendEvent(std::move(ev));
     }
   }
   // m_frames_colls[i].clear();
