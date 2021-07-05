@@ -1,24 +1,24 @@
 #include "eudaq/ROOTMonitor.hh"
 #include "eudaq/StdEventConverter.hh"
 
-#include "srsdriver/SlowControl.h"
 #include "srsdriver/Messenger.h"
 #include "srsdriver/Receiver.h"
+#include "srsdriver/SlowControl.h"
 #include "srsreadout/AdcData.h"
 #include "srsutils/Logging.h"
 
-#include "SrsEvent.hh"
 #include "SrsConfig.hh"
+#include "SrsEvent.hh"
 
+#include "TGraph.h"
 #include "TH1.h"
 #include "TH2.h"
-#include "TGraph.h"
 
 #include <random> // for std::accumulate
 
 class SrsMonitor : public eudaq::ROOTMonitor {
 public:
-  SrsMonitor(const std::string & name, const std::string & runcontrol);
+  SrsMonitor(const std::string &name, const std::string &runcontrol);
 
   void AtConfiguration() override;
   void AtRunStop() override;
@@ -31,20 +31,21 @@ private:
   eudaq::SrsConfigUP m_config;
   srs::SystemRegister m_sys;
   srs::ApvAppRegister m_apvapp;
-  std::map<unsigned short, TGraph*> m_map_ch_framebuf, m_map_ch_framebuf_zs;
-  std::map<unsigned short, TH1D*> m_map_ch_maxampl, m_map_ch_maxampl_zs;
+  std::map<unsigned short, TGraph *> m_map_ch_framebuf, m_map_ch_framebuf_zs;
+  std::map<unsigned short, TH1D *> m_map_ch_maxampl, m_map_ch_maxampl_zs;
 };
 
-namespace{
-  auto dummy0 = eudaq::Factory<eudaq::Monitor>::
-    Register<SrsMonitor, const std::string&, const std::string&>(SrsMonitor::m_id_factory);
+namespace {
+  auto dummy0 =
+      eudaq::Factory<eudaq::Monitor>::Register<SrsMonitor, const std::string &,
+                                               const std::string &>(
+          SrsMonitor::m_id_factory);
 }
 
-SrsMonitor::SrsMonitor(const std::string & name, const std::string & runcontrol)
-  :ROOTMonitor(name, "SRS monitor", runcontrol){
-}
+SrsMonitor::SrsMonitor(const std::string &name, const std::string &runcontrol)
+    : ROOTMonitor(name, "SRS monitor", runcontrol) {}
 
-void SrsMonitor::AtConfiguration(){
+void SrsMonitor::AtConfiguration() {
   auto cfg = GetConfiguration();
   if (cfg) {
     // retrieve run configuration directly for SRS
@@ -56,14 +57,14 @@ void SrsMonitor::AtConfiguration(){
       srs::SlowControl sc(addr_server);
       m_sys = sc.readSystemRegister();
       m_apvapp = sc.readApvAppRegister();
-    } catch (const srs::LogMessage&) {}
+    } catch (const srs::LogMessage &) {
+    }
   }
 }
 
-void SrsMonitor::AtRunStop(){
-}
+void SrsMonitor::AtRunStop() {}
 
-void SrsMonitor::AtEventReception(eudaq::EventSP ev){
+void SrsMonitor::AtEventReception(eudaq::EventSP ev) {
   eudaq::SrsEventSP event;
 
   if (ev->GetSubEvents().empty()) { // standard event with no sub-event
@@ -71,28 +72,36 @@ void SrsMonitor::AtEventReception(eudaq::EventSP ev){
       m_config = std::make_unique<eudaq::SrsConfig>(*ev);
       m_sys = m_config->SystemRegister();
       m_apvapp = m_config->ApvAppRegister();
-    }
-    else if (ev->GetDescription() == "SrsRaw")
+    } else if (ev->GetDescription() == "SrsRaw")
       event = std::make_shared<eudaq::SrsEvent>(*ev, m_apvapp.ebMode());
-  }
-  else // in case sub-events are present in event stream
-    for (auto& sub_evt : ev->GetSubEvents())
+  } else // in case sub-events are present in event stream
+    for (auto &sub_evt : ev->GetSubEvents())
       if (sub_evt->GetDescription() == "SrsRaw")
         event = std::make_shared<eudaq::SrsEvent>(*ev, m_apvapp.ebMode());
   if (!event)
     return;
 
   event->Print(std::cout);
-  const auto ch_id = event->Data()->daqChannel(); //FIXME
+  const auto ch_id = event->Data()->daqChannel(); // FIXME
   if (m_map_ch_framebuf.count(ch_id) == 0) {
-    m_map_ch_framebuf[ch_id] = m_monitor->Book<TGraph>(Form("channel %zu/framebuf", ch_id), "Frame buffer");
+    m_map_ch_framebuf[ch_id] = m_monitor->Book<TGraph>(
+        Form("channel %zu/framebuf", ch_id), "Frame buffer");
     m_map_ch_framebuf[ch_id]->SetTitle(";Time slice;ADC count");
-    //m_monitor->SetPersistant(m_map_ch_framebuf[ch_id], false);
-    m_map_ch_framebuf_zs[ch_id] = m_monitor->Book<TGraph>(Form("channel %zu/framebuf_zs", ch_id), "Frame buffer (ZS)");
-    m_map_ch_framebuf_zs[ch_id]->SetTitle(";Time slice;ADC count (zero-suppressed)");
-    //m_monitor->SetPersistant(m_map_ch_framebuf_zs[ch_id], false);
-    m_map_ch_maxampl[ch_id] = m_monitor->Book<TH1D>(Form("channel %zu/maxampl", ch_id), "Max.amplitude", Form("maxampl_ch%zu", ch_id), Form("Channel %zu;Max. amplitude;Events", ch_id), 100, 0., 4000.);
-    m_map_ch_maxampl_zs[ch_id] = m_monitor->Book<TH1D>(Form("channel %zu/maxampl_zs", ch_id), "Max.amplitude (ZS)", Form("maxampl_ch%zu_zs", ch_id), Form("Channel %zu;Max. amplitude (zero-suppressed);Events", ch_id), 100, 0., 2000.);
+    // m_monitor->SetPersistant(m_map_ch_framebuf[ch_id], false);
+    m_map_ch_framebuf_zs[ch_id] = m_monitor->Book<TGraph>(
+        Form("channel %zu/framebuf_zs", ch_id), "Frame buffer (ZS)");
+    m_map_ch_framebuf_zs[ch_id]->SetTitle(
+        ";Time slice;ADC count (zero-suppressed)");
+    // m_monitor->SetPersistant(m_map_ch_framebuf_zs[ch_id], false);
+    m_map_ch_maxampl[ch_id] = m_monitor->Book<TH1D>(
+        Form("channel %zu/maxampl", ch_id), "Max.amplitude",
+        Form("maxampl_ch%zu", ch_id),
+        Form("Channel %zu;Max. amplitude;Events", ch_id), 100, 0., 4000.);
+    m_map_ch_maxampl_zs[ch_id] = m_monitor->Book<TH1D>(
+        Form("channel %zu/maxampl_zs", ch_id), "Max.amplitude (ZS)",
+        Form("maxampl_ch%zu_zs", ch_id),
+        Form("Channel %zu;Max. amplitude (zero-suppressed);Events", ch_id), 100,
+        0., 2000.);
   }
   if (event->Data()->dataSource() == srs::SrsFrame::ADC) {
     const auto adc_frm = event->Data()->next<srs::AdcData>();
@@ -101,18 +110,22 @@ void SrsMonitor::AtEventReception(eudaq::EventSP ev){
     while (true) {
       try {
         const auto frms = adc_frm.next();
-        float baseline = std::accumulate(frms.data.begin(), frms.data.begin()+20, 0.)/20.;
-        for (const auto& frm : frms.data) {
-          const float val = frm, val_zs = val-baseline;
-          m_map_ch_framebuf[ch_id]->SetPoint(m_map_ch_framebuf[ch_id]->GetN(), i, val);
-          m_map_ch_framebuf_zs[ch_id]->SetPoint(m_map_ch_framebuf_zs[ch_id]->GetN(), i, val_zs);
+        float baseline =
+            std::accumulate(frms.data.begin(), frms.data.begin() + 20, 0.) /
+            20.;
+        for (const auto &frm : frms.data) {
+          const float val = frm, val_zs = val - baseline;
+          m_map_ch_framebuf[ch_id]->SetPoint(m_map_ch_framebuf[ch_id]->GetN(),
+                                             i, val);
+          m_map_ch_framebuf_zs[ch_id]->SetPoint(
+              m_map_ch_framebuf_zs[ch_id]->GetN(), i, val_zs);
           max_ampl = std::max(max_ampl, val);
           max_ampl_zs = std::max(max_ampl_zs, val_zs);
           ++i;
         }
         m_map_ch_maxampl[ch_id]->Fill(max_ampl);
         m_map_ch_maxampl_zs[ch_id]->Fill(max_ampl_zs);
-      } catch (const srs::SrsFrame::NoMoreFramesException&) {
+      } catch (const srs::SrsFrame::NoMoreFramesException &) {
         break;
       }
     }
