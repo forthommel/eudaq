@@ -1,20 +1,21 @@
 #include "eudaq/Producer.hh"
 
-#include <mutex>
-#include <map>
-#include <set>
-#include <streambuf>
-#include <future>
 #include <atomic>
+#include <future>
+#include <map>
+#include <mutex>
+#include <set>
 
-#include "srsdriver/SlowControl.h"
 #include "srsdriver/Messenger.h"
 #include "srsdriver/Receiver.h"
+#include "srsdriver/SlowControl.h"
 #include "srsreadout/SrsFrame.h"
 
 #include "srsutils/Logging.h"
 
-class SrsProducer:public eudaq::Producer{
+#include "SrsBuffer.hh"
+
+class SrsProducer : public eudaq::Producer {
 public:
   SrsProducer(const std::string &name, const std::string &runcontrol);
 
@@ -27,44 +28,32 @@ public:
   void RunLoop() override;
 
   static const uint32_t m_id_factory = eudaq::cstr2hash("SrsProducer");
+
 private:
   uint64_t m_ts_bore = 0;
   std::atomic_bool m_running = {false};
   unsigned long long m_trig_num = 0;
   unsigned int m_timeout_sec = 0;
 
-  /// Output stream derivation to EUDAQ_INFO
-  class SrsBuffer:public std::ostream{
-    private:
-      struct SrsLogger:public std::stringbuf{
-        int sync() override{
-          int ret = std::stringbuf::sync();
-          EUDAQ_DEBUG(str());
-          str("");
-          return ret;
-        }
-      } buff_;
-    public:
-      SrsBuffer():buff_(), std::ostream(&buff_){}
-  } m_ostream;
+  SrsBuffer m_ostream;
   std::unique_ptr<srs::SlowControl> m_srs;
   std::vector<srs::port_t> m_rd_ports;
   eudaq::EventUP m_srs_config;
   bool m_sent_config = false;
 };
 
-namespace{
-  auto dummy0 = eudaq::Factory<eudaq::Producer>::
-    Register<SrsProducer, const std::string&, const std::string&>
-    (SrsProducer::m_id_factory);
+namespace {
+  auto dummy0 = eudaq::Factory<eudaq::Producer>::Register<
+      SrsProducer, const std::string &, const std::string &>(
+      SrsProducer::m_id_factory);
 }
 
-SrsProducer::SrsProducer(const std::string &name, const std::string &runcontrol):
-  Producer(name, runcontrol){
+SrsProducer::SrsProducer(const std::string &name, const std::string &runcontrol)
+    : Producer(name, runcontrol) {
   srs::Logger::get().setOutput(&m_ostream, false);
 }
 
-void SrsProducer::DoInitialise(){
+void SrsProducer::DoInitialise() {
   auto ini = GetInitConfiguration();
 
   // set debugging mode
@@ -76,21 +65,21 @@ void SrsProducer::DoInitialise(){
   // set the list of initialisation scripts
   const std::string in_scripts = ini->Get("SRS_INIT_SCRIPTS", "");
   if (in_scripts.empty())
-    EUDAQ_THROW("Failed to retrieve an initialisation script!");
+    EUDAQ_THROW("No initialisation scripts specified!");
 
-  for (const auto& ini_file : eudaq::split(in_scripts, ",")) {
+  for (const auto &ini_file : eudaq::split(in_scripts, ",")) {
     std::string addr;
     srs::port_t port;
-    EUDAQ_INFO("Parsing and sending SRS configuration commands in \""+ini_file+"\"");
+    EUDAQ_INFO("Parsing and sending SRS configuration commands in \"" +
+               ini_file + "\"");
     const auto config = srs::Messenger::parseCommands(ini_file, addr, port);
-    srs::Messenger(addr)
-      .send(port, config);
+    srs::Messenger(addr).send(port, config);
   }
-  for (const auto& port : eudaq::split(ini->Get("SRS_READOUT_PORTS", "6006")))
+  for (const auto &port : eudaq::split(ini->Get("SRS_READOUT_PORTS", "6006")))
     m_rd_ports.emplace_back(std::stoi(port));
 }
 
-void SrsProducer::DoConfigure(){
+void SrsProducer::DoConfigure() {
   auto cfg = GetConfiguration();
   const std::string addr_server = cfg->Get("SRS_SERVER_ADDR", "10.0.0.2");
   if (addr_server.empty())
@@ -100,23 +89,26 @@ void SrsProducer::DoConfigure(){
   //--- build a configuration word payload
   m_srs_config = eudaq::Event::MakeUnique("SrsConfig");
   srs::words_t sys_words, apvapp_words;
-  for (const auto& word : m_srs->readSystemRegister())
+  for (const auto &word : m_srs->readSystemRegister())
     sys_words.emplace_back(*word);
   m_srs_config->AddBlock(0, sys_words);
-  for (const auto& word : m_srs->readApvAppRegister())
+  for (const auto &word : m_srs->readApvAppRegister())
     apvapp_words.emplace_back(*word);
   m_srs_config->AddBlock(1, apvapp_words);
   m_sent_config = false;
   //--- add the FEC readout port
-  for (const auto& port : m_rd_ports)
+  for (const auto &port : m_rd_ports)
     m_srs->addFec(port);
 }
 
-void SrsProducer::DoStartRun(){
+void SrsProducer::DoStartRun() {
   if (!m_sent_config) {
     EUDAQ_DEBUG("SRS configuration wrote:\n"
-      "SYS register: "+std::to_string(m_srs_config->GetBlock(0).size())+" words\n"
-      " APVAPP reg.: "+std::to_string(m_srs_config->GetBlock(1).size())+" words");
+                "SYS register: " +
+                std::to_string(m_srs_config->GetBlock(0).size()) +
+                " words\n"
+                " APVAPP reg.: " +
+                std::to_string(m_srs_config->GetBlock(1).size()) + " words");
     SendEvent(std::move(m_srs_config));
     m_sent_config = true;
   }
@@ -124,13 +116,13 @@ void SrsProducer::DoStartRun(){
   m_running = true;
 }
 
-void SrsProducer::DoStopRun(){
+void SrsProducer::DoStopRun() {
   m_srs->setReadoutEnable(false);
   m_running = false;
   m_sent_config = false;
 }
 
-void SrsProducer::DoReset(){
+void SrsProducer::DoReset() {
   m_running = false;
   m_sent_config = false;
   if (m_srs)
@@ -138,37 +130,38 @@ void SrsProducer::DoReset(){
   //...
 }
 
-void SrsProducer::DoTerminate(){
+void SrsProducer::DoTerminate() {
   m_running = false;
   m_sent_config = false;
   m_srs.release();
 }
 
-void SrsProducer::RunLoop(){
-  //auto tp_start_run = std::chrono::steady_clock::now();
-  std::map<unsigned int,eudaq::EventUP> map_events; // trigger time -> event
+void SrsProducer::RunLoop() {
+  // auto tp_start_run = std::chrono::steady_clock::now();
+  std::map<unsigned int, eudaq::EventUP> map_events; // trigger time -> event
 
   while (m_running) {
     for (size_t i = 0; i < m_srs->numFec(); ++i) {
-      auto frmbuf = m_srs->read(i, m_running);
-      if (frmbuf.empty()) {
-        EUDAQ_DEBUG("Empty collection retrieved for FEC#"+std::to_string(i));
+      auto buffer = m_srs->read(i, m_running);
+      if (buffer.empty()) {
+        EUDAQ_DEBUG("Empty collection retrieved for FEC#" + std::to_string(i));
         continue;
       }
-      const auto trig_time_beg = frmbuf.begin()->frameCounter().timestamp();
-      auto& ev = map_events[trig_time_beg];
+      const auto trig_time_beg = buffer.begin()->frameCounter().timestamp();
+      auto &ev = map_events[trig_time_beg];
       if (!ev) {
         // create a new output event if not already found
         ev = eudaq::Event::MakeUnique("SrsRaw");
         ev->SetTriggerN(m_trig_num);
         ev->SetEventN(m_trig_num);
-        const auto trig_time_end = frmbuf.size() > 1 ? frmbuf.rbegin()->frameCounter().timestamp() : 0;
+        const auto trig_time_end =
+            buffer.size() > 1 ? buffer.rbegin()->frameCounter().timestamp() : 0;
         ev->SetTimestamp(trig_time_beg, trig_time_end);
       }
-      for (const auto& buf : frmbuf)
+      for (const auto &buf : buffer)
         ev->AddBlock(buf.daqChannel(), buf);
-      if (m_trig_num+1 % 100 == 0)
-        EUDAQ_INFO("Number of triggers sent: "+std::to_string(m_trig_num));
+      if (m_trig_num + 1 % 100 == 0)
+        EUDAQ_INFO("Number of triggers sent: " + std::to_string(m_trig_num));
       m_trig_num++;
       // send all events to collector
       SendEvent(std::move(ev));
