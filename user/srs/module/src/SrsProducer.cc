@@ -33,7 +33,6 @@ private:
   uint64_t m_ts_bore = 0;
   std::atomic_bool m_running = {false};
   unsigned long long m_trig_num = 0;
-  unsigned int m_timeout_sec = 0;
 
   /// Output stream derivation to EUDAQ_INFO
   class SrsBuffer : public std::ostream {
@@ -51,6 +50,7 @@ private:
     SrsBuffer() : buff_(), std::ostream(&buff_) {}
   } m_ostream;
   std::unique_ptr<srs::SlowControl> m_srs;
+  std::string m_addr_server;
   std::vector<srs::port_t> m_rd_ports;
   eudaq::EventUP m_srs_config;
   bool m_sent_config = false;
@@ -73,40 +73,54 @@ void SrsProducer::DoInitialise() {
   // set debugging mode
   if (ini->Get("SRS_DEBUG", 0) == 1)
     srs::Logger::get().setLevel(srs::Logger::Level::debug);
-  // timeout for readout
-  m_timeout_sec = ini->Get("SRS_TIMEOUT_SEC", 0);
+
+  m_addr_server = ini->Get("SRS_SERVER_ADDR", "10.0.0.2");
+  if (m_addr_server.empty())
+    EUDAQ_THROW("Failed to retrieve the SRS server address!");
+  for (const auto &port :
+       eudaq::split(ini->Get("SRS_READOUT_PORTS", "6006"), ","))
+    m_rd_ports.emplace_back(std::stoi(port));
+}
+
+void SrsProducer::DoConfigure() {
+  auto cfg = GetConfiguration();
 
   // set the list of initialisation scripts
-  const std::string in_scripts = ini->Get("SRS_INIT_SCRIPTS", "");
+  const std::string in_scripts = cfg->Get("SRS_CONFIG_SCRIPTS", "");
   if (in_scripts.empty())
     EUDAQ_THROW("Failed to retrieve an initialisation script!");
 
+  m_srs = std::make_unique<srs::SlowControl>(m_addr_server);
+
+  EUDAQ_INFO(">>>>> aaaaa <<<<<");
   for (const auto &ini_file : eudaq::split(in_scripts, ",")) {
     std::string addr;
     srs::port_t port;
     EUDAQ_INFO("Parsing and sending SRS configuration commands in \"" +
                ini_file + "\"");
     const auto config = srs::Messenger::parseCommands(ini_file, addr, port);
-    srs::Messenger(addr).send(port, config);
+    m_srs->messenger().send(port, config);
   }
-  for (const auto &port : eudaq::split(ini->Get("SRS_READOUT_PORTS", "6006")))
-    m_rd_ports.emplace_back(std::stoi(port));
-}
 
-void SrsProducer::DoConfigure() {
-  auto cfg = GetConfiguration();
-  const std::string addr_server = cfg->Get("SRS_SERVER_ADDR", "10.0.0.2");
-  if (addr_server.empty())
-    EUDAQ_THROW("Failed to retrieve the SRS server address!");
+  EUDAQ_INFO(">>>>>>>><<<<<<<<");
 
-  m_srs = std::make_unique<srs::SlowControl>(addr_server);
   //--- build a configuration word payload
   m_srs_config = eudaq::Event::MakeUnique("SrsConfig");
+
   srs::words_t sys_words, apvapp_words;
-  for (const auto &word : m_srs->readSystemRegister())
+  const auto sys_reg = m_srs->readSystemRegister();
+  const auto apvapp_reg = m_srs->readApvAppRegister();
+
+  sys_reg.printConfig(std::cout);
+  std::cout << "-------\n";
+  apvapp_reg.printConfig(std::cout);
+
+  // for (const auto& word : m_srs->readSystemRegister())
+  for (const auto &word : sys_reg)
     sys_words.emplace_back(*word);
   m_srs_config->AddBlock(0, sys_words);
-  for (const auto &word : m_srs->readApvAppRegister())
+  // for (const auto& word : m_srs->readApvAppRegister())
+  for (const auto &word : apvapp_reg)
     apvapp_words.emplace_back(*word);
   m_srs_config->AddBlock(1, apvapp_words);
   m_sent_config = false;
@@ -117,7 +131,7 @@ void SrsProducer::DoConfigure() {
 
 void SrsProducer::DoStartRun() {
   if (!m_sent_config) {
-    EUDAQ_DEBUG("SRS configuration wrote:\n"
+    EUDAQ_DEBUG("SRS configuration written:\n"
                 "SYS register: " +
                 std::to_string(m_srs_config->GetBlock(0).size()) +
                 " words\n"
