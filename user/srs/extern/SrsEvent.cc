@@ -35,30 +35,41 @@ void SrsEvent::ConvertBlock(const std::vector<uint8_t> &block8) {
                           ((block8[i + 2] & 0xff) << 16) +
                           ((block8[i + 3] & 0xff) << 24)) &
                          0xffffffff);
-  frmbuf_ = std::make_unique<srs::SrsFrame>(block32, eb_mode_);
+  frmbuf_.emplace_back(
+      std::move(std::make_unique<srs::SrsFrame>(block32, eb_mode_)));
+}
+
+srs::SrsFrame *SrsEvent::Data(size_t i) const {
+  if (i >= NumFrames())
+    EUDAQ_THROW("SrsEvent frame counter overflow: requested frame #" +
+                std::to_string(i + 1) + ", while only " +
+                std::to_string(NumFrames()) + " is/are available.");
+  return frmbuf_.at(i).get();
 }
 
 void SrsEvent::Print(std::ostream &os, size_t offset) const {
-  if (!frmbuf_)
-    EUDAQ_THROW("SrsEvent object was not properly converted before printing.");
-
-  os << std::string(offset, ' ') << "<SrsEvent>\n"
-     << std::string(offset + 2, ' ') << "<FrameCounter>\n"
-     << std::string(offset + 4, ' ') << "<!--\n";
-  frmbuf_->frameCounter().print(os);
-  os << std::string(offset + 4, ' ') << "-->\n"
-     << std::string(offset + 2, ' ') << "</FrameCounter>\n"
-     << std::string(offset + 2, ' ') << "<DataSource>"
-     << frmbuf_->dataSourceStr() << "</DataSource>\n"
-     << std::string(offset + 2, ' ') << "<DaqChannel>"
-     << (uint16_t)frmbuf_->daqChannel() << "</DaqChannel>\n"
-     << std::string(offset + 2, ' ') << "<ApvIndex>"
-     << (uint16_t)frmbuf_->apvIndex() << "</ApvIndex>\n"
-     << std::string(offset + 2, ' ') << "<HeaderInfo>\n"
-     << std::string(offset + 4, ' ') << "<AdcSize>"
-     << frmbuf_->headerInfo().adcSize() << "</AdcSize>\n"
-     << std::string(offset + 4, ' ') << "<FecId>0x" << std::hex
-     << frmbuf_->headerInfo().fecId() << std::dec << "</FecId>\n"
-     << std::string(offset + 2, ' ') << "</HeaderInfo>\n"
-     << std::string(offset, ' ') << "</SrsEvent>\n";
+  os << std::string(offset, ' ') << "<SrsEvent>\n";
+  for (size_t i = 0; i < NumFrames(); ++i) {
+    const auto &frame = frmbuf_.at(i);
+    os << std::string(offset + 2, ' ') << "<SrsFrame>\n"
+       << std::string(offset + 4, ' ') << "<FrameCounter>\n"
+       << std::string(offset + 6, ' ') << "<!--\n";
+    frame->frameCounter().print(os);
+    os << std::string(offset + 6, ' ') << "-->\n"
+       << std::string(offset + 4, ' ') << "</FrameCounter>\n"
+       << std::string(offset + 4, ' ') << "<DataSource>"
+       << frame->dataSourceStr() << "</DataSource>\n"
+       << std::string(offset + 4, ' ') << "<DaqChannel>"
+       << (uint16_t)frame->daqChannel() << "</DaqChannel>\n"
+       << std::string(offset + 4, ' ') << "<ApvIndex>"
+       << (uint16_t)frame->apvIndex() << "</ApvIndex>\n"
+       << std::string(offset + 4, ' ') << "<HeaderInfo>\n"
+       << std::string(offset + 6, ' ') << "<AdcSize>"
+       << frame->headerInfo().adcSize() << "</AdcSize>\n"
+       << std::string(offset + 6, ' ') << "<FecId>0x" << std::hex
+       << frame->headerInfo().fecId() << std::dec << "</FecId>\n"
+       << std::string(offset + 4, ' ') << "</HeaderInfo>\n"
+       << std::string(offset + 2, ' ') << "</SrsFrame>\n";
+  }
+  os << std::string(offset, ' ') << "</SrsEvent>\n";
 }

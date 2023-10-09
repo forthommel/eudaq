@@ -21,14 +21,15 @@ namespace eudaq {
     void ConvertBlock(const std::vector<uint8_t> &);
     void Print(std::ostream &, size_t offset = 0) const override;
 
-    srs::SrsFrame *Data() const { return frmbuf_.get(); }
+    size_t NumFrames() const { return frmbuf_.size(); }
+    srs::SrsFrame *Data(size_t) const;
 
     static SrsEventSP MakeShared();
     static const uint32_t m_id_factory = cstr2hash("SrsEvent");
 
   private:
     srs::ApvAppRegister::EventBuilderMode eb_mode_;
-    std::unique_ptr<srs::SrsFrame> frmbuf_;
+    std::vector<std::unique_ptr<srs::SrsFrame>> frmbuf_;
   };
 } // namespace eudaq
 
