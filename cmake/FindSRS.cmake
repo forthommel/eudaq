@@ -7,7 +7,7 @@
 message(STATUS "Looking for SRS driver.")
 
 set(SRS_DIRS $ENV{SRS_DIR} ${SRS_DIR})
-find_path(SRS_INCLUDE_DIR NAMES "srsdriver/Config.h" PATHS ${SRS_DIRS} HINTS ${SRS_DIRS}/include)
+find_path(SRS_INCLUDE_DIR NAMES "srsdriver/SlowControl.h" PATHS ${SRS_DIRS} HINTS ${SRS_DIRS}/include)
 message(STATUS "srsdriver => ${SRS_INCLUDE_DIR}")
 if(SRS_INCLUDE_DIR)
    set(SRS_INC_FOUND TRUE)

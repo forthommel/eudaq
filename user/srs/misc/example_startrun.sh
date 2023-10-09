@@ -1,4 +1,6 @@
 #!/bin/sh
+#export LD_LIBRARY_PATH=~/srsdriver/build/:$LD_LIBRARY_PATH
+
 BINPATH=../../../bin
 $BINPATH/euLog&
 sleep 1

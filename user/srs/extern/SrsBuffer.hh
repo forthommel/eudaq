@@ -1,8 +1,8 @@
 #ifndef srs_SrsBuffer_hh
 #define srs_SrsBuffer_hh
 
-#include <streambuf>
 #include "eudaq/Logger.hh"
+#include <streambuf>
 
 /// Output stream derivation to EUDAQ_INFO
 class SrsBuffer : public std::ostream {

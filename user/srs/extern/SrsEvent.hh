@@ -12,13 +12,16 @@ namespace eudaq {
 
   class DLLEXPORT SrsEvent : public StandardEvent {
   public:
-    SrsEvent(const srs::ApvAppRegister::EventBuilderMode& ebmode = srs::ApvAppRegister::FRAME_EVENT_CNT);
-    SrsEvent(const Event&, const srs::ApvAppRegister::EventBuilderMode& ebmode = srs::ApvAppRegister::FRAME_EVENT_CNT);
+    SrsEvent(const srs::ApvAppRegister::EventBuilderMode &ebmode =
+                 srs::ApvAppRegister::FRAME_EVENT_CNT);
+    SrsEvent(const Event &,
+             const srs::ApvAppRegister::EventBuilderMode &ebmode =
+                 srs::ApvAppRegister::FRAME_EVENT_CNT);
 
-    void ConvertBlock(const std::vector<uint8_t>&);
-    void Print(std::ostream&, size_t offset = 0) const override;
+    void ConvertBlock(const std::vector<uint8_t> &);
+    void Print(std::ostream &, size_t offset = 0) const override;
 
-    srs::SrsFrame* Data() const { return frmbuf_.get(); }
+    srs::SrsFrame *Data() const { return frmbuf_.get(); }
 
     static SrsEventSP MakeShared();
     static const uint32_t m_id_factory = cstr2hash("SrsEvent");
@@ -27,6 +30,6 @@ namespace eudaq {
     srs::ApvAppRegister::EventBuilderMode eb_mode_;
     std::unique_ptr<srs::SrsFrame> frmbuf_;
   };
-}
+} // namespace eudaq
 
 #endif

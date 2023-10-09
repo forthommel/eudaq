@@ -1,10 +1,12 @@
 #include "eudaq/Producer.hh"
 
 #include <atomic>
+#include <chrono>
 #include <future>
 #include <map>
 #include <mutex>
 #include <set>
+#include <thread>
 
 #include "srsdriver/Messenger.h"
 #include "srsdriver/Receiver.h"
@@ -76,25 +78,23 @@ void SrsProducer::DoConfigure() {
   if (in_scripts.empty())
     EUDAQ_THROW("No initialisation scripts specified!");
 
-  m_srs = std::make_unique<srs::SlowControl>(m_addr_server);
   for (const auto &ini_file : eudaq::split(in_scripts, ",")) {
     std::string addr;
-    srs::port_t port;
+    srs::port_t port{};
     EUDAQ_INFO("Parsing and sending SRS configuration commands in \"" +
                ini_file + "\"");
     const auto config = srs::Messenger::parseCommands(ini_file, addr, port);
-    srs::Messenger(addr).send(port, config);
+    EUDAQ_DEBUG("Config: " + ini_file + ", address: " + addr +
+                ", port: " + std::to_string(port));
+    srs::Messenger mess(addr);
+    if (!mess.send(port, config))
+      EUDAQ_THROW("Failed to send SRS configuration commands in \"" + ini_file +
+                  "\"");
+    std::this_thread::sleep_for(
+        std::chrono::milliseconds(cfg->Get("SRS_DELAY_MS", 100)));
   }
-  for (const auto &port : eudaq::split(ini->Get("SRS_READOUT_PORTS", "6006")))
-    m_rd_ports.emplace_back(std::stoi(port));
-}
 
-void SrsProducer::DoConfigure() {
-  auto cfg = GetConfiguration();
-  const std::string addr_server = cfg->Get("SRS_SERVER_ADDR", "10.0.0.2");
-  if (addr_server.empty())
-    EUDAQ_THROW("Failed to retrieve the SRS server address!");
-
+  m_srs = std::make_unique<srs::SlowControl>(m_addr_server);
   //--- build a configuration word payload
   m_srs_config = eudaq::Event::MakeUnique("SrsConfig");
 
@@ -168,8 +168,10 @@ void SrsProducer::RunLoop() {
             buffer.size() > 1 ? buffer.rbegin()->frameCounter().timestamp() : 0;
         ev->SetTimestamp(trig_time_beg, trig_time_end);
       }
-      for (const auto &buf : buffer)
+      for (const auto &buf : buffer) {
         ev->AddBlock(buf.daqChannel(), buf);
+        buf.print(std::cout);
+      }
       if (m_trig_num + 1 % 100 == 0)
         EUDAQ_INFO("Number of triggers sent: " + std::to_string(m_trig_num));
       m_trig_num++;

@@ -28,6 +28,7 @@ public:
 
 private:
   static const uint32_t m_srs_hash = eudaq::cstr2hash("SrsRaw");
+  void parseEvent(const std::shared_ptr<eudaq::SrsEvent> &event);
   eudaq::SrsConfigUP m_config;
   srs::SystemRegister m_sys;
   srs::ApvAppRegister m_apvapp;
@@ -72,24 +73,34 @@ void SrsMonitor::AtEventReception(eudaq::EventSP ev) {
       m_config = std::make_unique<eudaq::SrsConfig>(*ev);
       m_sys = m_config->SystemRegister();
       m_apvapp = m_config->ApvAppRegister();
-    } else if (ev->GetDescription() == "SrsRaw")
+    } else if (ev->GetDescription() == "SrsRaw") {
       event = std::make_shared<eudaq::SrsEvent>(*ev, m_apvapp.ebMode());
+      parseEvent(event);
+    }
   } else // in case sub-events are present in event stream
     for (auto &sub_evt : ev->GetSubEvents())
-      if (sub_evt->GetDescription() == "SrsRaw")
+      if (sub_evt->GetDescription() == "SrsRaw") {
         event = std::make_shared<eudaq::SrsEvent>(*ev, m_apvapp.ebMode());
-  if (!event)
+        parseEvent(event);
+      }
+  if (!event) {
+    EUDAQ_ERROR("No (sub-)SRS events were found in the event flow.");
     return;
+  }
+}
 
+void SrsMonitor::parseEvent(const std::shared_ptr<eudaq::SrsEvent> &event) {
   event->Print(std::cout);
   const auto ch_id = event->Data()->daqChannel(); // FIXME
   if (m_map_ch_framebuf.count(ch_id) == 0) {
     m_map_ch_framebuf[ch_id] = m_monitor->Book<TGraph>(
         Form("channel %zu/framebuf", ch_id), "Frame buffer");
+    m_monitor->SetPersistant(m_map_ch_framebuf[ch_id], false);
     m_map_ch_framebuf[ch_id]->SetTitle(";Time slice;ADC count");
     // m_monitor->SetPersistant(m_map_ch_framebuf[ch_id], false);
     m_map_ch_framebuf_zs[ch_id] = m_monitor->Book<TGraph>(
         Form("channel %zu/framebuf_zs", ch_id), "Frame buffer (ZS)");
+    m_monitor->SetPersistant(m_map_ch_framebuf_zs[ch_id], false);
     m_map_ch_framebuf_zs[ch_id]->SetTitle(
         ";Time slice;ADC count (zero-suppressed)");
     // m_monitor->SetPersistant(m_map_ch_framebuf_zs[ch_id], false);
