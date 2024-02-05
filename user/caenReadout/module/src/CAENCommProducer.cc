@@ -166,7 +166,11 @@ void CAENCommProducer::DoTerminate() {
     fclose(m_file_lock);
     m_file_lock = 0;
   }
-  CAEN_DGTZ_CloseDigitizer(m_handle);
+  if (auto res = CAEN_DGTZ_CloseDigitizer(m_handle); res != CAEN_DGTZ_Success) {
+    EUDAQ_THROW("Failed to close the communication with the digitiser. "
+                "Returned error code " +
+                std::to_string(res));
+  }
 }
 //----------DOC-MARK-----BEG*LOOP-----DOC-MARK----------
 void CAENCommProducer::RunLoop() {
