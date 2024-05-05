@@ -18,7 +18,7 @@
 class SrsMonitor : public eudaq::ROOTMonitor {
 public:
   explicit SrsMonitor(const std::string &name, const std::string &runcontrol)
-      : ROOTMonitor(name, "SRS monitor", runcontrol) {}
+      : ROOTMonitor(name, "SRS/APV25 monitor", runcontrol) {}
 
   void AtConfiguration() override;
   void AtRunStop() override {}
@@ -32,8 +32,8 @@ private:
   eudaq::SrsConfigUP m_config;
   srs::SystemRegister m_sys;
   srs::ApvAppRegister m_apvapp;
-  std::map<unsigned short, TGraph *> m_map_ch_framebuf, m_map_ch_framebuf_zs;
-  std::map<unsigned short, TH1D *> m_map_ch_maxampl, m_map_ch_maxampl_zs;
+  std::map<unsigned short, TGraph *> m_map_ch_framebuf;
+  std::map<unsigned short, TH1D *> m_map_ch_maxampl;
   unsigned int m_num_samples_baseline{20};
 };
 
@@ -51,12 +51,6 @@ void SrsMonitor::AtConfiguration() {
     const std::string addr_server = cfg->Get("SRS_SERVER_ADDR", "10.0.0.2");
     if (addr_server.empty())
       EUDAQ_THROW("Failed to retrieve the SRS server address!");
-    try {
-      srs::SlowControl sc(addr_server);
-      m_sys = sc.readSystemRegister();
-      m_apvapp = sc.readApvAppRegister();
-    } catch (const srs::LogMessage &) {
-    }
     m_num_samples_baseline = cfg->Get("SRS_NUM_SAMPLES_BASELINE", 20);
   }
 }
@@ -87,46 +81,55 @@ void SrsMonitor::parseEvent(const std::shared_ptr<eudaq::SrsEvent> &event) {
           Form("channel %zu/framebuf", ch_id), "Frame buffer");
       m_monitor->SetPersistant(m_map_ch_framebuf[ch_id], false);
       m_map_ch_framebuf[ch_id]->SetTitle(";Time slice;ADC count");
-      m_map_ch_framebuf_zs[ch_id] = m_monitor->Book<TGraph>(
-          Form("channel %zu/framebuf_zs", ch_id), "Frame buffer (ZS)");
-      m_monitor->SetPersistant(m_map_ch_framebuf_zs[ch_id], false);
-      m_map_ch_framebuf_zs[ch_id]->SetTitle(
-          ";Time slice;ADC count (zero-suppressed)");
       m_map_ch_maxampl[ch_id] = m_monitor->Book<TH1D>(
           Form("channel %zu/maxampl", ch_id), "Max.amplitude",
           Form("maxampl_ch%zu", ch_id),
           Form("Channel %zu;Max. amplitude;Events", ch_id), 100, 0., 4000.);
-      m_map_ch_maxampl_zs[ch_id] = m_monitor->Book<TH1D>(
-          Form("channel %zu/maxampl_zs", ch_id), "Max.amplitude (ZS)",
-          Form("maxampl_ch%zu_zs", ch_id),
-          Form("Channel %zu;Max. amplitude (zero-suppressed);Events", ch_id),
-          100, 0., 2000.);
     }
-    const auto adc_frm = frame->next<srs::AdcData>();
-    int i = 0;
-    float max_ampl = -1., max_ampl_zs = -1.;
-    while (true) {
-      try {
-        const auto frms = adc_frm.next();
-        float baseline =
-            std::accumulate(frms.data.begin(),
-                            frms.data.begin() + m_num_samples_baseline, 0.) *
-            1. / m_num_samples_baseline;
-        for (const auto &frm : frms.data) {
-          const float val = frm, val_zs = val - baseline;
-          m_map_ch_framebuf[ch_id]->SetPoint(m_map_ch_framebuf[ch_id]->GetN(),
-                                             i, val);
-          m_map_ch_framebuf_zs[ch_id]->SetPoint(
-              m_map_ch_framebuf_zs[ch_id]->GetN(), i, val_zs);
-          max_ampl = std::max(max_ampl, val);
-          max_ampl_zs = std::max(max_ampl_zs, val_zs);
-          ++i;
+    try {
+      // only display the first frame
+      const auto adc_frm = frame->next<srs::AdcData>();
+      auto *gr = m_map_ch_framebuf[ch_id];
+      gr->Set(0);
+      while (true) {
+        try {
+          const auto word = adc_frm.nextWord();
+          gr->AddPoint(gr->GetN(), word);
+          std::cout << gr->GetN() << ":" << word << "::::" << std::endl;
+        } catch (const srs::SrsFrame::NoMoreFramesException &) {
+          break;
         }
-        m_map_ch_maxampl[ch_id]->Fill(max_ampl);
-        m_map_ch_maxampl_zs[ch_id]->Fill(max_ampl_zs);
-      } catch (const srs::SrsFrame::NoMoreFramesException &) {
-        break;
       }
+    } catch (const srs::SrsFrame::NoMoreFramesException &) {
     }
+    int i = 0;
+    float max_ampl = -1.;
+    // while (true) {
+    /*try {
+      const auto frms = adc_frm.next();
+      float baseline =
+          std::accumulate(frms.data.begin(),
+                          frms.data.begin() + m_num_samples_baseline, 0.) *
+          1. / m_num_samples_baseline;
+      for (const auto &frm : frms.data) {
+        const float val = frm, val_zs = val - baseline;
+        m_map_ch_framebuf[ch_id]->SetPoint(m_map_ch_framebuf[ch_id]->GetN(),
+                                           i, val);
+        m_map_ch_framebuf_zs[ch_id]->SetPoint(
+            m_map_ch_framebuf_zs[ch_id]->GetN(), i, val_zs);
+        max_ampl = std::max(max_ampl, val);
+        max_ampl_zs = std::max(max_ampl_zs, val_zs);
+        ++i;
+      }
+      m_map_ch_maxampl[ch_id]->Fill(max_ampl);
+      m_map_ch_maxampl_zs[ch_id]->Fill(max_ampl_zs);
+    } catch (const srs::SrsFrame::NoMoreFramesException &) {
+      break;
+    }*/
+    /*if (m_map_ch_framebuf[ch_id]->GetN() > 2000)
+      break;
+    m_map_ch_framebuf[ch_id]->AddPoint(m_map_ch_framebuf[ch_id]->GetN(),
+                                       adc_frm.nextWord());*/
+    //}
   }
 }

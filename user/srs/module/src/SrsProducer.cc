@@ -149,13 +149,12 @@ void SrsProducer::DoTerminate() {
 void SrsProducer::RunLoop() {
   // auto tp_start_run = std::chrono::steady_clock::now();
   std::map<unsigned int, eudaq::EventUP> map_events; // trigger time -> event
-
   while (m_running) {
     for (size_t i = 0; i < m_srs->numFec(); ++i) {
-      auto buffer = m_srs->read(i, m_running);
+      const auto buffer = m_srs->read(i, m_running);
       if (buffer.empty()) {
         EUDAQ_DEBUG("Empty collection retrieved for FEC#" + std::to_string(i));
-        continue;
+        continue; // move to the next FEC
       }
       const auto trig_time_beg = buffer.begin()->frameCounter().timestamp();
       auto &ev = map_events[trig_time_beg];
@@ -170,14 +169,13 @@ void SrsProducer::RunLoop() {
       }
       for (const auto &buf : buffer) {
         ev->AddBlock(buf.daqChannel(), buf);
-        buf.print(std::cout);
+        // buf.print(std::cout);
       }
       if (m_trig_num + 1 % 100 == 0)
         EUDAQ_INFO("Number of triggers sent: " + std::to_string(m_trig_num));
+      SendEvent(std::move(ev)); // send all events to collector
       m_trig_num++;
-      // send all events to collector
-      SendEvent(std::move(ev));
-    }
+    } // loop on FECs
   }
   // m_frames_colls[i].clear();
 }
