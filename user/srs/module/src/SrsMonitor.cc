@@ -35,6 +35,7 @@ private:
   std::map<unsigned short, TGraph *> m_map_ch_framebuf;
   std::map<unsigned short, TH1D *> m_map_ch_maxampl;
   unsigned int m_num_samples_baseline{20};
+  std::string m_monitor_mode{"PHYSICS"};
 };
 
 namespace {
@@ -52,6 +53,7 @@ void SrsMonitor::AtConfiguration() {
     if (addr_server.empty())
       EUDAQ_THROW("Failed to retrieve the SRS server address!");
     m_num_samples_baseline = cfg->Get("SRS_NUM_SAMPLES_BASELINE", 20);
+    m_monitor_mode = cfg->Get("SRS_MONITOR_MODE", "PHYSICS");
   }
 }
 
@@ -95,7 +97,6 @@ void SrsMonitor::parseEvent(const std::shared_ptr<eudaq::SrsEvent> &event) {
         try {
           const auto word = adc_frm.nextWord();
           gr->AddPoint(gr->GetN(), word);
-          std::cout << gr->GetN() << ":" << word << "::::" << std::endl;
         } catch (const srs::SrsFrame::NoMoreFramesException &) {
           break;
         }
